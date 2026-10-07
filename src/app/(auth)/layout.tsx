@@ -4,9 +4,9 @@ import { PlatformBadge } from "@/components/platform-badge";
 import { PLATFORMS } from "@/lib/platforms";
 
 const perks = [
-  "Post to 5 platforms at once",
+  "Instagram, Facebook and YouTube in one place",
   "Schedule weeks ahead",
-  "See all your stats in one place",
+  "See how every post performs",
 ];
 
 // Shared layout for /login, /signup and /forgot-password:

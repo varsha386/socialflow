@@ -1,11 +1,9 @@
 // The social platforms SocialFlow can post to.
 // `color` is each platform's brand color, used for small logo badges.
-export type PlatformId =
-  | "bluesky"
-  | "linkedin"
-  | "youtube"
-  | "facebook"
-  | "instagram";
+// `provider` is the login service used to connect it: Facebook and Instagram
+// both connect through one Meta login.
+export type PlatformId = "instagram" | "facebook" | "youtube";
+export type ProviderId = "meta" | "youtube";
 
 export type Platform = {
   id: PlatformId;
@@ -13,29 +11,17 @@ export type Platform = {
   short: string;
   color: string;
   description: string;
+  provider: ProviderId;
 };
 
 export const PLATFORMS: Platform[] = [
   {
-    id: "bluesky",
-    name: "Bluesky",
-    short: "Bs",
-    color: "#1185FE",
-    description: "Text posts with up to 4 images or 1 video.",
-  },
-  {
-    id: "linkedin",
-    name: "LinkedIn",
-    short: "in",
-    color: "#0A66C2",
-    description: "Posts to your personal profile.",
-  },
-  {
-    id: "youtube",
-    name: "YouTube",
-    short: "YT",
-    color: "#FF0000",
-    description: "Video uploads and Shorts.",
+    id: "instagram",
+    name: "Instagram",
+    short: "IG",
+    color: "#E1306C",
+    description: "Needs a Business or Creator account linked to a Facebook Page.",
+    provider: "meta",
   },
   {
     id: "facebook",
@@ -43,12 +29,14 @@ export const PLATFORMS: Platform[] = [
     short: "f",
     color: "#0866FF",
     description: "Posts to a Facebook Page you manage.",
+    provider: "meta",
   },
   {
-    id: "instagram",
-    name: "Instagram",
-    short: "IG",
-    color: "#E1306C",
-    description: "Needs a Business or Creator account.",
+    id: "youtube",
+    name: "YouTube",
+    short: "YT",
+    color: "#FF0000",
+    description: "Video uploads and Shorts to your channel.",
+    provider: "youtube",
   },
 ];

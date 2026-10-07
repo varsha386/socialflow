@@ -10,7 +10,7 @@
 |---|---|
 | Sign up, log in, Google login, password reset | ✅ Done |
 | Protected app pages with a sidebar layout | ✅ Done |
-| Connect Bluesky, LinkedIn, YouTube, Facebook and Instagram | 🚧 Planned |
+| Connect Instagram, Facebook and YouTube | 🚧 In progress |
 | Create a post with media, per-platform captions and a preview | 🚧 Planned |
 | Publish now or schedule for later | 🚧 Planned |
 | Calendar, bulk upload, analytics and inbox | 🚧 Planned |
