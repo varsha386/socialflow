@@ -1,23 +1,26 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CalendarClock, CircleCheck, Plug, SquarePen } from "lucide-react";
+import { Check, CalendarClock, CircleCheck, Plug, SquarePen } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getCurrentUser, getDashboardStats } from "@/lib/data";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
-// Placeholder numbers until we connect the database (Phase 4).
-const stats = [
-  { label: "Scheduled posts", value: 0, icon: CalendarClock },
-  { label: "Published this week", value: 0, icon: CircleCheck },
-  { label: "Connected accounts", value: 0, icon: Plug },
-];
+export default async function DashboardPage() {
+  const [user, stats] = await Promise.all([getCurrentUser(), getDashboardStats()]);
+  const firstName = user.name.split(" ")[0];
 
-export default function DashboardPage() {
+  const cards = [
+    { label: "Scheduled posts", value: stats.scheduledPosts, icon: CalendarClock },
+    { label: "Published this week", value: stats.publishedThisWeek, icon: CircleCheck },
+    { label: "Connected accounts", value: stats.connectedAccounts, icon: Plug },
+  ];
+
   return (
     <>
-      <PageHeader title="Dashboard" description="Your posting activity at a glance.">
+      <PageHeader title={`Hi, ${firstName}`} description="Your posting activity at a glance.">
         <Link href="/create" className={buttonVariants({ size: "lg" })}>
           <SquarePen />
           Create post
@@ -25,7 +28,7 @@ export default function DashboardPage() {
       </PageHeader>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        {stats.map((stat) => (
+        {cards.map((stat) => (
           <Card key={stat.label}>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-sm font-normal text-muted-foreground">
@@ -47,17 +50,17 @@ export default function DashboardPage() {
           <CardTitle>Get started</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
-          <Step n={1} done={false}>
+          <Step n={1} done={stats.connectedAccounts > 0}>
             <Link href="/connections" className="text-primary hover:underline">
               Connect your social accounts
             </Link>
           </Step>
-          <Step n={2} done={false}>
+          <Step n={2} done={stats.totalPosts > 0}>
             <Link href="/create" className="text-primary hover:underline">
               Create your first post
             </Link>
           </Step>
-          <Step n={3} done={false}>
+          <Step n={3} done={stats.scheduledPosts > 0}>
             <Link href="/calendar" className="text-primary hover:underline">
               Plan your week in the calendar
             </Link>
@@ -86,9 +89,9 @@ function Step({
             : "flex size-6 items-center justify-center rounded-full border text-xs text-muted-foreground"
         }
       >
-        {n}
+        {done ? <Check className="size-3.5" /> : n}
       </span>
-      {children}
+      <span className={done ? "line-through opacity-60" : undefined}>{children}</span>
     </div>
   );
 }

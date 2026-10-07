@@ -1,19 +1,33 @@
 import type { Metadata } from "next";
-import { Settings } from "lucide-react";
-import { ComingSoon } from "@/components/coming-soon";
 import { PageHeader } from "@/components/page-header";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { getCurrentUser } from "@/lib/data";
+import { ProfileForm } from "./profile-form";
 
 export const metadata: Metadata = { title: "Settings" };
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  const user = await getCurrentUser();
+  const timezones = ["UTC", ...Intl.supportedValuesOf("timeZone").filter((tz) => tz !== "UTC")];
+
   return (
     <>
       <PageHeader title="Settings" description="Your profile and preferences." />
-      <ComingSoon
-        icon={Settings}
-        title="Settings are coming in Phase 3"
-        text="Update your name, photo, password, and time zone once login is set up."
-      />
+
+      <Card className="max-w-xl">
+        <CardHeader>
+          <CardTitle>Profile</CardTitle>
+          <CardDescription>How you appear in SocialFlow.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ProfileForm
+            name={user.name}
+            email={user.email}
+            timezone={user.timezone}
+            timezones={timezones}
+          />
+        </CardContent>
+      </Card>
     </>
   );
 }
