@@ -104,4 +104,13 @@ supabase/migrations/  Database setup, run in order
 
 ## What I learned
 
-<!-- Write a few sentences in your own words: the hardest problem, how you solved it, what you'd do differently. Interviewers love this section. -->
+I started this project as a beginner with a research document comparing tools like Buffer and Metricool, and built it step by step with an AI coding assistant guiding me. Along the way I learned that the hard parts of a real product are rarely the screens:
+
+- **Platform APIs are the real work.** Each platform has its own rules: Instagram only accepts JPEG photos within certain aspect ratios and needs time to process videos, YouTube uploads in two steps, and Facebook albums are built from unpublished photos. Checking these rules *before* sending a post gave much better error messages than waiting for the platform to reject it.
+- **Permissions shape what you can build.** Every feature (publishing, analytics, comments) needed its own OAuth permissions from Meta or Google, and adding one meant reconnecting accounts. I learned to plan permissions early, and why apps need a Privacy Policy before Google and Meta will approve them.
+- **Time zones are tricky.** My first scheduled post went out 5½ hours late, because my profile was still set to UTC while I meant India time. I also found that browsers can call the same place by two names (Asia/Calcutta and Asia/Kolkata). I fixed the bug, then added a warning when the app's time zone doesn't match the computer's, so the mistake is hard to repeat.
+- **Background jobs need to be safe to run twice.** A scheduled post can be cancelled or moved while its job is waiting, and a button can be double-clicked. Claiming a post with one conditional database update (`draft → publishing`), and re-checking the scheduled time when a job wakes up, means a post is never published twice or at the wrong time.
+- **Security belongs in the database, not just the UI.** Row Level Security makes every table private to its owner, and social media tokens are encrypted and kept in a table the browser can't read at all.
+- **Debugging is about checking assumptions.** When a database update failed with "table does not exist", the cause was that I was in a different Supabase project. Checking which project, key or time zone is actually in use solved more bugs than changing code did.
+
+**What I'd do differently:** set up the time zone during sign-up instead of defaulting to UTC, write automated tests for the publishing and scheduling logic from the start, and request all the platform permissions I'd need up front, to avoid reconnecting accounts later.

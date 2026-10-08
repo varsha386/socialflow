@@ -91,7 +91,7 @@ function Step({
       >
         {done ? <Check className="size-3.5" /> : n}
       </span>
-      <span className={done ? "line-through opacity-60" : undefined}>{children}</span>
+      <span>{children}</span>
     </div>
   );
 }
