@@ -351,3 +351,136 @@ export async function getCalendarPosts(fromIso: string, toIso: string, timeZone:
     .filter((p) => Date.parse(p.at) >= Date.parse(fromIso) && Date.parse(p.at) < Date.parse(toIso))
     .sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
 }
+
+export type AnalyticsData = {
+  totals: { views: number; likes: number; comments: number; shares: number; posts: number };
+  hasViews: boolean;
+  days: { date: string; likes: number; comments: number; shares: number }[]; // last 30 days, oldest first
+  accounts: { id: string; platform: PlatformId; name: string; followers: number | null; change: number | null }[];
+  topPosts: {
+    postId: string;
+    caption: string;
+    platform: PlatformId;
+    accountName: string;
+    url: string | null;
+    views: number | null;
+    likes: number;
+    comments: number;
+    shares: number;
+  }[];
+  lastRefreshed: string | null;
+};
+
+// Everything the Analytics page shows, for posts published in the last 30 days.
+export async function getAnalytics(timeZone: string): Promise<AnalyticsData> {
+  const supabase = await createClient();
+  const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+  const [targetsRes, accountsRes, followersRes, profileRes] = await Promise.all([
+    supabase
+      .from("post_targets")
+      .select(
+        `id, post_id, published_at, external_url,
+         social_accounts ( platform, display_name, username ),
+         posts ( caption ),
+         post_metrics ( views, likes, comments, shares )`
+      )
+      .eq("status", "published")
+      .gte("published_at", since),
+    supabase.from("social_accounts").select("id, platform, display_name, username").eq("status", "connected"),
+    supabase
+      .from("account_metrics")
+      .select("account_id, day, followers")
+      .gte("day", since.slice(0, 10))
+      .order("day"),
+    supabase.from("profiles").select("metrics_refreshed_at").maybeSingle(),
+  ]);
+  for (const res of [targetsRes, accountsRes, followersRes]) {
+    if (res.error) throw new Error(`Couldn't load analytics: ${res.error.message}`);
+  }
+
+  type MetricRow = { views: number | null; likes: number | null; comments: number | null; shares: number | null };
+  type TargetRow = {
+    id: string;
+    post_id: string;
+    published_at: string;
+    external_url: string | null;
+    social_accounts: { platform: PlatformId; display_name: string | null; username: string | null } | null;
+    posts: { caption: string } | null;
+    post_metrics: MetricRow | MetricRow[] | null;
+  };
+
+  const totals = { views: 0, likes: 0, comments: 0, shares: 0, posts: 0 };
+  let hasViews = false;
+  const byDay = new Map<string, { likes: number; comments: number; shares: number }>();
+  const topPosts: AnalyticsData["topPosts"] = [];
+
+  for (const t of (targetsRes.data ?? []) as unknown as TargetRow[]) {
+    const m = Array.isArray(t.post_metrics) ? t.post_metrics[0] : t.post_metrics;
+    const likes = Number(m?.likes ?? 0);
+    const comments = Number(m?.comments ?? 0);
+    const shares = Number(m?.shares ?? 0);
+    totals.likes += likes;
+    totals.comments += comments;
+    totals.shares += shares;
+    totals.posts += 1;
+    if (m?.views !== null && m?.views !== undefined) {
+      totals.views += Number(m.views);
+      hasViews = true;
+    }
+
+    const day = utcToZonedInput(new Date(t.published_at), timeZone).slice(0, 10);
+    const bucket = byDay.get(day) ?? { likes: 0, comments: 0, shares: 0 };
+    bucket.likes += likes;
+    bucket.comments += comments;
+    bucket.shares += shares;
+    byDay.set(day, bucket);
+
+    topPosts.push({
+      postId: t.post_id,
+      caption: t.posts?.caption ?? "",
+      platform: t.social_accounts?.platform ?? "facebook",
+      accountName: t.social_accounts?.display_name ?? t.social_accounts?.username ?? "",
+      url: t.external_url,
+      views: m?.views ?? null,
+      likes,
+      comments,
+      shares,
+    });
+  }
+
+  // The last 30 calendar days in the user's time zone, oldest first, including empty days.
+  const today = utcToZonedInput(new Date(), timeZone).slice(0, 10);
+  const days: AnalyticsData["days"] = [];
+  for (let i = 29; i >= 0; i--) {
+    const date = new Date(Date.parse(`${today}T00:00:00Z`) - i * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    days.push({ date, ...(byDay.get(date) ?? { likes: 0, comments: 0, shares: 0 }) });
+  }
+
+  // Followers: the latest count, and the change since the first count in the window.
+  type FollowerRow = { account_id: string; day: string; followers: number | null };
+  const followerRows = (followersRes.data ?? []) as FollowerRow[];
+  const accounts = ((accountsRes.data ?? []) as { id: string; platform: PlatformId; display_name: string | null; username: string | null }[]).map((a) => {
+    const rows = followerRows.filter((r) => r.account_id === a.id && r.followers !== null);
+    const first = rows[0]?.followers ?? null;
+    const last = rows.at(-1)?.followers ?? null;
+    return {
+      id: a.id,
+      platform: a.platform,
+      name: a.display_name ?? a.username ?? "",
+      followers: last === null ? null : Number(last),
+      change: first === null || last === null || rows.length < 2 ? null : Number(last) - Number(first),
+    };
+  });
+
+  topPosts.sort((a, b) => b.likes + b.comments + b.shares - (a.likes + a.comments + a.shares));
+
+  return {
+    totals,
+    hasViews,
+    days,
+    accounts,
+    topPosts: topPosts.slice(0, 5),
+    lastRefreshed: (profileRes.data?.metrics_refreshed_at as string | null) ?? null,
+  };
+}

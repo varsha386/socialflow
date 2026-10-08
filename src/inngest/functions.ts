@@ -1,4 +1,5 @@
 import "server-only";
+import { refreshUserMetrics } from "@/lib/analytics/collect";
 import { publishPost } from "@/lib/publishing";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { POST_SCHEDULED, inngest, type PostScheduledData } from "./client";
@@ -48,4 +49,24 @@ export const publishScheduledPost = inngest.createFunction(
   }
 );
 
-export const functions = [publishScheduledPost];
+
+// Every 6 hours: collect fresh analytics for everyone with a connected account.
+export const refreshAllMetrics = inngest.createFunction(
+  { id: "refresh-all-metrics", triggers: [{ cron: "0 */6 * * *" }], retries: 1 },
+  async ({ step }) => {
+    const userIds = await step.run("find-users", async () => {
+      const { data } = await createAdminClient()
+        .from("social_accounts")
+        .select("user_id")
+        .eq("status", "connected");
+      return [...new Set((data ?? []).map((r) => r.user_id as string))];
+    });
+    // One step per user, so one user's problem doesn't stop the rest.
+    for (const userId of userIds) {
+      await step.run(`refresh-${userId}`, () => refreshUserMetrics(userId));
+    }
+    return { users: userIds.length };
+  }
+);
+
+export const functions = [publishScheduledPost, refreshAllMetrics];
