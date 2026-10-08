@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, CalendarClock, ChartColumn, Send } from "lucide-react";
+import { SiteFooter } from "@/components/legal-page";
 import { Logo } from "@/components/logo";
 import { PlatformBadge } from "@/components/platform-badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -72,9 +73,7 @@ export default function HomePage() {
         </section>
       </main>
 
-      <footer className="border-t py-6 text-center text-sm text-muted-foreground">
-        © {new Date().getFullYear()} SocialFlow
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

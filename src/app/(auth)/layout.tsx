@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Check } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { PlatformBadge } from "@/components/platform-badge";
@@ -19,6 +20,17 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <div className="flex flex-1 items-center justify-center py-10">
           <div className="w-full max-w-sm">{children}</div>
         </div>
+        <p className="text-center text-xs text-muted-foreground">
+          By continuing, you agree to the{" "}
+          <Link href="/terms" className="underline hover:text-foreground">
+            Terms of Service
+          </Link>{" "}
+          and{" "}
+          <Link href="/privacy" className="underline hover:text-foreground">
+            Privacy Policy
+          </Link>
+          .
+        </p>
       </div>
 
       <div className="hidden p-4 lg:block">
