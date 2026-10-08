@@ -41,7 +41,9 @@ export const youtubeConnector: Connector = {
       response_type: "code",
       scope: SCOPES.join(" "),
       access_type: "offline", // gives us a refresh token to stay connected
-      prompt: "consent", // always ask, so Google always sends the refresh token
+      // select_account: always show the account picker (so you can choose a Brand Account channel).
+      // consent: always ask for permission, so Google always sends the refresh token.
+      prompt: "select_account consent",
       include_granted_scopes: "true",
       state,
     });

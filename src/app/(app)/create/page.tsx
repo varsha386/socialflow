@@ -1,22 +1,53 @@
 import type { Metadata } from "next";
-import { SquarePen } from "lucide-react";
-import { ComingSoon } from "@/components/coming-soon";
+import { notFound } from "next/navigation";
+import { Composer, type ComposerInitial } from "@/components/composer/composer";
 import { PageHeader } from "@/components/page-header";
+import { getCurrentUser, getDraft, getSocialAccounts } from "@/lib/data";
 
 export const metadata: Metadata = { title: "Create post" };
 
-export default function CreatePostPage() {
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// /create starts a new post; /create?post=<id> reopens a saved draft.
+export default async function CreatePostPage({ searchParams }: PageProps<"/create">) {
+  const { post } = await searchParams;
+  const postId = typeof post === "string" && UUID.test(post) ? post : null;
+
+  const [user, allAccounts, draft] = await Promise.all([
+    getCurrentUser(),
+    getSocialAccounts(),
+    postId ? getDraft(postId) : null,
+  ]);
+  if (postId && !draft) notFound();
+
+  const accounts = allAccounts.filter((a) => a.status === "connected");
+  const initial: ComposerInitial = draft
+    ? {
+        postId: draft.id,
+        caption: draft.caption,
+        media: draft.media,
+        accountIds: draft.accountIds,
+        customCaptions: draft.customCaptions,
+        youtube: draft.youtube,
+      }
+    : {
+        postId: null,
+        caption: "",
+        media: [],
+        // New posts start with every connected account chosen.
+        accountIds: accounts.map((a) => a.id),
+        customCaptions: {},
+        youtube: { title: "", privacy: "public" },
+      };
+
   return (
     <>
       <PageHeader
-        title="Create post"
+        title={draft ? "Edit draft" : "Create post"}
         description="Write once, then publish or schedule it everywhere."
       />
-      <ComingSoon
-        icon={SquarePen}
-        title="The post editor is coming in Phase 6"
-        text="Upload media, write captions for each platform, preview, then publish or schedule."
-      />
+      {/* key: start fresh when switching between drafts */}
+      <Composer key={initial.postId ?? "new"} userId={user.id} accounts={accounts} initial={initial} />
     </>
   );
 }

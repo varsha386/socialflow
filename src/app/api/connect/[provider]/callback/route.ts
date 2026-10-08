@@ -28,6 +28,13 @@ export async function GET(
   const state = searchParams.get("state");
   const saved = request.cookies.get(STATE_COOKIE)?.value;
   if (!code || !state || saved !== `${provider}:${state}`) {
+    console.error(`[connect] ${provider} state check failed:`, {
+      hasCode: !!code,
+      hasState: !!state,
+      hasCookie: !!saved,
+      cookieMatches: saved === `${provider}:${state}`,
+      host: request.headers.get("host"),
+    });
     return back(`error=expired&provider=${provider}`);
   }
 

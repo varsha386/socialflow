@@ -1,0 +1,365 @@
+"use client";
+
+import { useMemo, useState, useTransition } from "react";
+import Link from "next/link";
+import { CircleCheck, LoaderCircle, TriangleAlert } from "lucide-react";
+import { saveDraft } from "@/app/(app)/create/actions";
+import { CaptionEditor } from "@/components/composer/caption-editor";
+import { MediaUploader } from "@/components/composer/media-uploader";
+import { PostPreview } from "@/components/composer/post-preview";
+import { PlatformBadge } from "@/components/platform-badge";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
+import { PLATFORMS, type PlatformId } from "@/lib/platforms";
+import {
+  CAPTION_LIMITS,
+  YOUTUBE_TITLE_LIMIT,
+  checkPost,
+  type MediaItem,
+  type YouTubeOptions,
+} from "@/lib/post-rules";
+import type { SocialAccount } from "@/lib/types";
+
+export type ComposerInitial = {
+  postId: string | null;
+  caption: string;
+  media: MediaItem[];
+  accountIds: string[];
+  customCaptions: Partial<Record<PlatformId, string>>;
+  youtube: YouTubeOptions;
+};
+
+const platformInfo = (id: PlatformId) => PLATFORMS.find((p) => p.id === id)!;
+
+export function Composer({
+  userId,
+  accounts,
+  initial,
+}: {
+  userId: string;
+  accounts: SocialAccount[];
+  initial: ComposerInitial;
+}) {
+  const [postId, setPostId] = useState(initial.postId);
+  const [selected, setSelected] = useState<string[]>(initial.accountIds);
+  const [media, setMedia] = useState<MediaItem[]>(initial.media);
+  const [caption, setCaption] = useState(initial.caption);
+  const [customCaptions, setCustomCaptions] = useState(initial.customCaptions);
+  const [youtube, setYoutube] = useState<YouTubeOptions>(initial.youtube);
+  const [tab, setTab] = useState<"all" | PlatformId>("all");
+  const [previewChoice, setPreviewChoice] = useState<PlatformId | null>(null);
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const [saving, startSaving] = useTransition();
+
+  // The platforms of the chosen accounts, in a fixed order.
+  const platforms = useMemo(() => {
+    const chosen = new Set(accounts.filter((a) => selected.includes(a.id)).map((a) => a.platform));
+    return PLATFORMS.map((p) => p.id).filter((id) => chosen.has(id));
+  }, [accounts, selected]);
+
+  const activeTab = tab !== "all" && !platforms.includes(tab) ? "all" : tab;
+  const previewPlatform =
+    previewChoice && platforms.includes(previewChoice) ? previewChoice : platforms[0] ?? null;
+
+  const captionFor = (p: PlatformId) => customCaptions[p] ?? caption;
+  const checks = platforms.map((p) => ({ platform: p, problems: checkPost(p, captionFor(p), media, youtube) }));
+
+  function toggleAccount(id: string) {
+    setMessage(null);
+    setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+  }
+
+  function handleSave() {
+    setMessage(null);
+    startSaving(async () => {
+      const result = await saveDraft({
+        postId,
+        caption,
+        mediaIds: media.map((m) => m.id),
+        accountIds: selected,
+        // Only send custom captions for platforms that are still chosen.
+        customCaptions: Object.fromEntries(
+          Object.entries(customCaptions).filter(([p]) => platforms.includes(p as PlatformId))
+        ),
+        youtube,
+      });
+      if (result.postId && result.postId !== postId) {
+        setPostId(result.postId);
+        // Put the draft's ID in the address (without reloading), so a refresh keeps editing it.
+        window.history.replaceState(null, "", `/create?post=${result.postId}`);
+      }
+      setMessage(result.error ? { ok: false, text: result.error } : { ok: true, text: "Draft saved" });
+    });
+  }
+
+  if (accounts.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-10 text-center">
+          <p className="font-medium">Connect an account first</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            You need at least one Instagram, Facebook or YouTube account to post to.
+          </p>
+          <Link href="/connections" className={buttonVariants({ className: "mt-4" })}>
+            Go to Connections
+          </Link>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const previewAccount = previewPlatform
+    ? accounts.find((a) => a.platform === previewPlatform && selected.includes(a.id))!
+    : null;
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="space-y-6">
+        {/* 1. Accounts */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Post to</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            {accounts.map((a) => {
+              const on = selected.includes(a.id);
+              return (
+                <button
+                  key={a.id}
+                  type="button"
+                  onClick={() => toggleAccount(a.id)}
+                  aria-pressed={on}
+                  className={cn(
+                    "flex items-center gap-2 rounded-full border py-1 pr-3.5 pl-1 text-sm transition-colors",
+                    on
+                      ? "border-primary bg-accent text-accent-foreground"
+                      : "bg-card text-muted-foreground hover:border-primary/40"
+                  )}
+                >
+                  <span className={cn("scale-75", !on && "opacity-50 grayscale")}>
+                    <PlatformBadge platform={platformInfo(a.platform)} />
+                  </span>
+                  <span className="max-w-40 truncate">{a.display_name ?? a.username}</span>
+                </button>
+              );
+            })}
+          </CardContent>
+        </Card>
+
+        {/* 2. Media */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Photos and videos</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <MediaUploader
+              userId={userId}
+              media={media}
+              onChange={(update) => {
+                setMessage(null);
+                setMedia(update);
+              }}
+            />
+          </CardContent>
+        </Card>
+
+        {/* 3. Caption, with a tab per platform */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Caption</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {platforms.length > 0 && (
+              <div className="flex flex-wrap gap-1" role="tablist">
+                {(["all", ...platforms] as const).map((t) => {
+                  const custom = t !== "all" && customCaptions[t] !== undefined;
+                  return (
+                    <button
+                      key={t}
+                      type="button"
+                      role="tab"
+                      aria-selected={activeTab === t}
+                      onClick={() => setTab(t)}
+                      className={cn(
+                        "rounded-full px-3.5 py-1.5 text-sm transition-colors",
+                        activeTab === t
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:bg-muted"
+                      )}
+                    >
+                      {t === "all" ? "All platforms" : platformInfo(t).name}
+                      {custom && " •"}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {activeTab === "all" ? (
+              <CaptionEditor
+                value={caption}
+                onChange={(v) => {
+                  setMessage(null);
+                  setCaption(v);
+                }}
+                placeholder="What do you want to share?"
+                limits={platforms.map((p) => ({ label: platformInfo(p).name, max: CAPTION_LIMITS[p] }))}
+              />
+            ) : (
+              <>
+                <CaptionEditor
+                  value={captionFor(activeTab)}
+                  onChange={(v) => {
+                    setMessage(null);
+                    setCustomCaptions((c) => ({ ...c, [activeTab]: v }));
+                  }}
+                  placeholder={`Caption for ${platformInfo(activeTab).name}`}
+                  limits={[{ label: platformInfo(activeTab).name, max: CAPTION_LIMITS[activeTab] }]}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {customCaptions[activeTab] !== undefined ? (
+                    <>
+                      {platformInfo(activeTab).name} uses its own caption.{" "}
+                      <button
+                        type="button"
+                        className="font-medium text-primary hover:underline"
+                        onClick={() =>
+                          setCustomCaptions((c) => {
+                            const next = { ...c };
+                            delete next[activeTab];
+                            return next;
+                          })
+                        }
+                      >
+                        Use the main caption instead
+                      </button>
+                    </>
+                  ) : (
+                    <>Start typing to give {platformInfo(activeTab).name} its own caption.</>
+                  )}
+                </p>
+              </>
+            )}
+
+            {activeTab === "youtube" || (activeTab === "all" && platforms.includes("youtube")) ? (
+              <div className="grid gap-3 rounded-2xl bg-muted p-4 sm:grid-cols-[1fr_auto]">
+                <div className="space-y-2">
+                  <Label htmlFor="yt-title">YouTube title</Label>
+                  <Input
+                    id="yt-title"
+                    value={youtube.title}
+                    onChange={(e) => setYoutube((y) => ({ ...y, title: e.target.value }))}
+                    placeholder="Give your video a title"
+                    className="h-10 bg-card"
+                  />
+                  <p className={cn("text-xs text-muted-foreground", youtube.title.length > YOUTUBE_TITLE_LIMIT && "text-destructive")}>
+                    {youtube.title.length}/{YOUTUBE_TITLE_LIMIT}
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="yt-privacy">Visibility</Label>
+                  <select
+                    id="yt-privacy"
+                    value={youtube.privacy}
+                    onChange={(e) => setYoutube((y) => ({ ...y, privacy: e.target.value as YouTubeOptions["privacy"] }))}
+                    className="h-10 w-full rounded-lg border border-input bg-card px-2.5 text-sm"
+                  >
+                    <option value="public">Public</option>
+                    <option value="unlisted">Unlisted</option>
+                    <option value="private">Private</option>
+                  </select>
+                </div>
+                <p className="text-xs text-muted-foreground sm:col-span-2">
+                  The caption becomes the video description. Until Google verifies SocialFlow, YouTube keeps
+                  uploaded videos private.
+                </p>
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
+
+        {/* 4. Checks and save */}
+        <Card>
+          <CardContent className="space-y-4">
+            {checks.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Choose at least one account above.</p>
+            ) : (
+              <ul className="space-y-2">
+                {checks.map(({ platform, problems }) => (
+                  <li key={platform} className="flex items-start gap-2 text-sm">
+                    {problems.length === 0 ? (
+                      <CircleCheck className="mt-0.5 size-4 shrink-0 text-primary" />
+                    ) : (
+                      <TriangleAlert className="mt-0.5 size-4 shrink-0 text-amber-600" />
+                    )}
+                    <span>
+                      <span className="font-medium">{platformInfo(platform).name}:</span>{" "}
+                      {problems.length === 0 ? "ready" : problems.join(" ")}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <div className="flex flex-wrap items-center gap-3 border-t pt-4">
+              <Button size="lg" className="h-11 px-6" onClick={handleSave} disabled={saving}>
+                {saving && <LoaderCircle className="animate-spin" />}
+                Save draft
+              </Button>
+              {message && (
+                <span className={cn("text-sm", message.ok ? "text-muted-foreground" : "text-destructive")}>
+                  {message.text}
+                </span>
+              )}
+              <span className="ml-auto text-xs text-muted-foreground">Publishing arrives in the next step.</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Preview */}
+      <div className="lg:sticky lg:top-8 lg:self-start">
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-sm font-medium">Preview</p>
+          {platforms.length > 1 && (
+            <div className="flex gap-1">
+              {platforms.map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setPreviewChoice(p)}
+                  className={cn(
+                    "rounded-full px-2.5 py-1 text-xs",
+                    previewPlatform === p ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  {platformInfo(p).name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        {previewPlatform && previewAccount ? (
+          <PostPreview
+            platform={previewPlatform}
+            account={{
+              name: previewAccount.display_name ?? previewAccount.username ?? "",
+              username: previewAccount.username,
+              avatarUrl: previewAccount.avatar_url,
+            }}
+            caption={captionFor(previewPlatform)}
+            media={media}
+            youtube={youtube}
+          />
+        ) : (
+          <div className="rounded-2xl border-2 border-dashed px-6 py-16 text-center text-sm text-muted-foreground">
+            Choose an account to see a preview
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

@@ -40,7 +40,10 @@ function resultMessage(params: Record<string, string | string[] | undefined>) {
     case "expired":
       return { ok: false, text: "That took too long or the page was reloaded. Try connecting again." };
     case "no_channel":
-      return { ok: false, text: "That Google account doesn't have a YouTube channel yet. Create one on youtube.com, then try again." };
+      return {
+        ok: false,
+        text: "No YouTube channel was found on the account you picked. If your channel uses a Brand Account, choose the channel's name (not your own) when Google asks. Otherwise, create a channel on youtube.com first.",
+      };
     case "no_pages":
       return { ok: false, text: "No Facebook Pages were found. When Facebook asks, make sure you select your Page (and its Instagram account)." };
     default:
