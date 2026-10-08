@@ -24,10 +24,15 @@ if not exist "node_modules" (
   )
 )
 
+REM The Inngest Dev Server runs scheduled posts on this computer.
+REM It opens in its own window; its dashboard is at http://localhost:8288
+start "SocialFlow scheduler (Inngest)" cmd /k "npx --yes inngest-cli@latest dev -u http://localhost:3000/api/inngest --no-discovery"
+
 echo.
 echo Starting SocialFlow... the browser will open at http://localhost:3000
 echo The first page load can take a minute while it compiles.
-echo Press Ctrl+C to stop the server.
+echo Scheduled posts run in the second window ("SocialFlow scheduler").
+echo Press Ctrl+C to stop the server, and close both windows when you're done.
 echo.
 
 REM Open the browser after a short delay, in the background

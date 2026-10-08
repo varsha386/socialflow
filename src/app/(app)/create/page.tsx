@@ -47,7 +47,13 @@ export default async function CreatePostPage({ searchParams }: PageProps<"/creat
         description="Write once, then publish or schedule it everywhere."
       />
       {/* key: start fresh when switching between drafts */}
-      <Composer key={initial.postId ?? "new"} userId={user.id} accounts={accounts} initial={initial} />
+      <Composer
+        key={initial.postId ?? "new"}
+        userId={user.id}
+        timezone={user.timezone}
+        accounts={accounts}
+        initial={initial}
+      />
     </>
   );
 }

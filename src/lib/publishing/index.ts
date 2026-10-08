@@ -34,12 +34,21 @@ type TargetRow = {
   } | null;
 };
 
-// Publishes a post to every account it targets (skipping ones already published,
-// so this also works as "retry"). Uses the admin client so it can also run in the
-// background later (scheduled posts), so it always checks the post belongs to userId.
-export async function publishPost(postId: string, userId: string): Promise<PublishOutcome> {
-  const admin = createAdminClient();
+type Prepared = {
+  post: { id: string; caption: string; status: PostStatus };
+  media: MediaItem[];
+  todo: TargetRow[];
+  captionFor: (t: TargetRow) => string;
+  youtubeOptions: (t: TargetRow) => YouTubeOptions;
+};
 
+// Loads a post and checks it's ready to go to every account it targets.
+// Returns an error message to show, or everything needed to publish it.
+async function prepare(
+  admin: ReturnType<typeof createAdminClient>,
+  postId: string,
+  userId: string
+): Promise<{ error: string } | Prepared> {
   const { data, error } = await admin
     .from("posts")
     .select(
@@ -98,6 +107,24 @@ export async function publishPost(postId: string, userId: string): Promise<Publi
       return { error: `${t.social_accounts!.display_name ?? platform}: ${problems.join(" ")}` };
     }
   }
+
+  return { post, media, todo, captionFor, youtubeOptions };
+}
+
+// Checks a post could be published, without publishing it (used before scheduling).
+export async function checkReadyToPublish(postId: string, userId: string): Promise<string | null> {
+  const prepared = await prepare(createAdminClient(), postId, userId);
+  return "error" in prepared ? prepared.error : null;
+}
+
+// Publishes a post to every account it targets (skipping ones already published,
+// so this also works as "retry"). Uses the admin client so it can also run in the
+// background (scheduled posts), so it always checks the post belongs to userId.
+export async function publishPost(postId: string, userId: string): Promise<PublishOutcome> {
+  const admin = createAdminClient();
+  const prepared = await prepare(admin, postId, userId);
+  if ("error" in prepared) return prepared;
+  const { media, todo, captionFor, youtubeOptions } = prepared;
 
   // Claim the post. Only one request can move it to "publishing", so a
   // double-click (or a scheduler running twice) can't publish it twice.

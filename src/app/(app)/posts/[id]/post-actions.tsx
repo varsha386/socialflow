@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LoaderCircle, RotateCw } from "lucide-react";
+import { CalendarX, LoaderCircle, Pencil, RotateCw } from "lucide-react";
+import { unschedulePost } from "@/app/(app)/create/actions";
 import { Button } from "@/components/ui/button";
 
 // "Retry failed" button: publishes the post again, skipping accounts that already worked.
@@ -44,4 +45,42 @@ export function AutoRefresh() {
     return () => clearInterval(timer);
   }, [router]);
   return null;
+}
+
+// For scheduled posts: cancel the schedule (back to a draft), or cancel and edit.
+export function ScheduledActions({ postId }: { postId: string }) {
+  const router = useRouter();
+  const [pending, setPending] = useState<"cancel" | "edit" | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function unschedule(then: "cancel" | "edit") {
+    if (then === "cancel" && !window.confirm("Cancel the schedule? The post will go back to your drafts.")) return;
+    setPending(then);
+    setError(null);
+    const result = await unschedulePost(postId);
+    if (result.error) {
+      setError(result.error);
+      setPending(null);
+      return;
+    }
+    if (then === "edit") router.push(`/create?post=${postId}`);
+    else {
+      setPending(null);
+      router.refresh();
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <Button size="lg" onClick={() => unschedule("edit")} disabled={pending !== null}>
+        {pending === "edit" ? <LoaderCircle className="animate-spin" /> : <Pencil />}
+        Edit
+      </Button>
+      <Button size="lg" variant="outline" onClick={() => unschedule("cancel")} disabled={pending !== null}>
+        {pending === "cancel" ? <LoaderCircle className="animate-spin" /> : <CalendarX />}
+        Cancel schedule
+      </Button>
+      {error && <span className="w-full text-sm text-destructive">{error}</span>}
+    </div>
+  );
 }

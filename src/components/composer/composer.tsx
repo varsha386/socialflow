@@ -3,8 +3,8 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CircleCheck, LoaderCircle, Send, TriangleAlert } from "lucide-react";
-import { saveDraft } from "@/app/(app)/create/actions";
+import { CalendarClock, CircleCheck, LoaderCircle, Send, TriangleAlert } from "lucide-react";
+import { saveDraft, schedulePost } from "@/app/(app)/create/actions";
 import { CaptionEditor } from "@/components/composer/caption-editor";
 import { MediaUploader } from "@/components/composer/media-uploader";
 import { PostPreview } from "@/components/composer/post-preview";
@@ -22,6 +22,7 @@ import {
   type MediaItem,
   type YouTubeOptions,
 } from "@/lib/post-rules";
+import { utcToZonedInput } from "@/lib/timezone";
 import type { SocialAccount } from "@/lib/types";
 
 export type ComposerInitial = {
@@ -35,12 +36,20 @@ export type ComposerInitial = {
 
 const platformInfo = (id: PlatformId) => PLATFORMS.find((p) => p.id === id)!;
 
+// Tomorrow at 9:00 AM in the given time zone, as "2026-10-15T09:00".
+function suggestedScheduleTime(timeZone: string) {
+  const tomorrow = utcToZonedInput(new Date(Date.now() + 24 * 60 * 60 * 1000), timeZone);
+  return `${tomorrow.slice(0, 10)}T09:00`;
+}
+
 export function Composer({
   userId,
+  timezone,
   accounts,
   initial,
 }: {
   userId: string;
+  timezone: string;
   accounts: SocialAccount[];
   initial: ComposerInitial;
 }) {
@@ -55,6 +64,8 @@ export function Composer({
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [saving, startSaving] = useTransition();
   const [publishing, setPublishing] = useState(false);
+  const [showSchedule, setShowSchedule] = useState(false);
+  const [scheduleAt, setScheduleAt] = useState(""); // "2026-10-15T19:00" in the user's time zone
   const router = useRouter();
 
   // The platforms of the chosen accounts, in a fixed order.
@@ -107,17 +118,44 @@ export function Composer({
     });
   }
 
-  function handlePublish() {
+  // Shows the first thing to fix before publishing or scheduling; true if there's nothing.
+  function readyToSend(): boolean {
     setMessage(null);
     if (selected.length === 0) {
       setMessage({ ok: false, text: "Choose at least one account to post to." });
-      return;
+      return false;
     }
     const firstProblem = checks.find((c) => c.problems.length > 0);
     if (firstProblem) {
       setMessage({ ok: false, text: `Fix ${platformInfo(firstProblem.platform).name} first: ${firstProblem.problems[0]}` });
-      return;
+      return false;
     }
+    return true;
+  }
+
+  function openSchedule() {
+    if (!readyToSend()) return;
+    // Suggest tomorrow at 9:00 AM in the user's time zone.
+    if (!scheduleAt) setScheduleAt(suggestedScheduleTime(timezone));
+    setShowSchedule(true);
+  }
+
+  function handleSchedule() {
+    if (!readyToSend()) return;
+    startSaving(async () => {
+      const id = await save();
+      if (!id) return;
+      const result = await schedulePost(id, scheduleAt);
+      if (result.error) {
+        setMessage({ ok: false, text: result.error });
+        return;
+      }
+      router.push(`/posts/${id}`);
+    });
+  }
+
+  function handlePublish() {
+    if (!readyToSend()) return;
     if (!window.confirm(`Publish now to ${selected.length} ${selected.length === 1 ? "account" : "accounts"}?`)) return;
 
     setPublishing(true);
@@ -356,8 +394,19 @@ export function Composer({
                 {publishing ? <LoaderCircle className="animate-spin" /> : <Send />}
                 {publishing ? "Publishing…" : "Publish now"}
               </Button>
-              <Button size="lg" variant="outline" className="h-11 px-6" onClick={handleSave} disabled={saving}>
-                {saving && !publishing && <LoaderCircle className="animate-spin" />}
+              <Button
+                size="lg"
+                variant="outline"
+                className="h-11 px-6"
+                onClick={() => (showSchedule ? setShowSchedule(false) : openSchedule())}
+                disabled={saving}
+                aria-expanded={showSchedule}
+              >
+                <CalendarClock />
+                Schedule
+              </Button>
+              <Button size="lg" variant="ghost" className="h-11 px-5" onClick={handleSave} disabled={saving}>
+                {saving && !publishing && !showSchedule && <LoaderCircle className="animate-spin" />}
                 Save draft
               </Button>
               {message && (
@@ -366,6 +415,34 @@ export function Composer({
                 </span>
               )}
             </div>
+
+            {showSchedule && (
+              <div className="flex flex-wrap items-end gap-3 rounded-2xl bg-muted p-4">
+                <div className="space-y-2">
+                  <Label htmlFor="schedule-at">Publish on</Label>
+                  <Input
+                    id="schedule-at"
+                    type="datetime-local"
+                    value={scheduleAt}
+                    onChange={(e) => {
+                      setMessage(null);
+                      setScheduleAt(e.target.value);
+                    }}
+                    className="h-11 w-auto bg-card"
+                  />
+                </div>
+                <Button size="lg" className="h-11 px-6" onClick={handleSchedule} disabled={saving || !scheduleAt}>
+                  {saving && <LoaderCircle className="animate-spin" />}
+                  Schedule post
+                </Button>
+                <p className="w-full text-xs text-muted-foreground">
+                  Time zone: {timezone.replaceAll("_", " ")}.{" "}
+                  <Link href="/settings" className="font-medium text-primary hover:underline">
+                    Change
+                  </Link>
+                </p>
+              </div>
+            )}
             {publishing && (
               <p className="text-xs text-muted-foreground">
                 Videos can take a few minutes, because Instagram and YouTube process them first. Keep this tab open.
