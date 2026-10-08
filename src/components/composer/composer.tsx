@@ -2,7 +2,8 @@
 
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { CircleCheck, LoaderCircle, TriangleAlert } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { CircleCheck, LoaderCircle, Send, TriangleAlert } from "lucide-react";
 import { saveDraft } from "@/app/(app)/create/actions";
 import { CaptionEditor } from "@/components/composer/caption-editor";
 import { MediaUploader } from "@/components/composer/media-uploader";
@@ -53,6 +54,8 @@ export function Composer({
   const [previewChoice, setPreviewChoice] = useState<PlatformId | null>(null);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [saving, startSaving] = useTransition();
+  const [publishing, setPublishing] = useState(false);
+  const router = useRouter();
 
   // The platforms of the chosen accounts, in a fixed order.
   const platforms = useMemo(() => {
@@ -72,26 +75,70 @@ export function Composer({
     setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
   }
 
+  // Saves the post as a draft. Returns its ID, or null if saving failed.
+  async function save(): Promise<string | null> {
+    const result = await saveDraft({
+      postId,
+      caption,
+      mediaIds: media.map((m) => m.id),
+      accountIds: selected,
+      // Only send custom captions for platforms that are still chosen.
+      customCaptions: Object.fromEntries(
+        Object.entries(customCaptions).filter(([p]) => platforms.includes(p as PlatformId))
+      ),
+      youtube,
+    });
+    if (result.postId && result.postId !== postId) {
+      setPostId(result.postId);
+      // Put the draft's ID in the address (without reloading), so a refresh keeps editing it.
+      window.history.replaceState(null, "", `/create?post=${result.postId}`);
+    }
+    if (result.error) {
+      setMessage({ ok: false, text: result.error });
+      return null;
+    }
+    return result.postId ?? null;
+  }
+
   function handleSave() {
     setMessage(null);
     startSaving(async () => {
-      const result = await saveDraft({
-        postId,
-        caption,
-        mediaIds: media.map((m) => m.id),
-        accountIds: selected,
-        // Only send custom captions for platforms that are still chosen.
-        customCaptions: Object.fromEntries(
-          Object.entries(customCaptions).filter(([p]) => platforms.includes(p as PlatformId))
-        ),
-        youtube,
-      });
-      if (result.postId && result.postId !== postId) {
-        setPostId(result.postId);
-        // Put the draft's ID in the address (without reloading), so a refresh keeps editing it.
-        window.history.replaceState(null, "", `/create?post=${result.postId}`);
+      if (await save()) setMessage({ ok: true, text: "Draft saved" });
+    });
+  }
+
+  function handlePublish() {
+    setMessage(null);
+    if (selected.length === 0) {
+      setMessage({ ok: false, text: "Choose at least one account to post to." });
+      return;
+    }
+    const firstProblem = checks.find((c) => c.problems.length > 0);
+    if (firstProblem) {
+      setMessage({ ok: false, text: `Fix ${platformInfo(firstProblem.platform).name} first: ${firstProblem.problems[0]}` });
+      return;
+    }
+    if (!window.confirm(`Publish now to ${selected.length} ${selected.length === 1 ? "account" : "accounts"}?`)) return;
+
+    setPublishing(true);
+    startSaving(async () => {
+      const id = await save();
+      if (!id) {
+        setPublishing(false);
+        return;
       }
-      setMessage(result.error ? { ok: false, text: result.error } : { ok: true, text: "Draft saved" });
+      try {
+        const res = await fetch(`/api/posts/${id}/publish`, { method: "POST" });
+        const body = (await res.json()) as { error?: string };
+        if (body.error) {
+          setMessage({ ok: false, text: body.error });
+          setPublishing(false);
+          return;
+        }
+      } catch {
+        // The request may still be running on the server; the post page shows the latest status.
+      }
+      router.push(`/posts/${id}`);
     });
   }
 
@@ -305,8 +352,12 @@ export function Composer({
             )}
 
             <div className="flex flex-wrap items-center gap-3 border-t pt-4">
-              <Button size="lg" className="h-11 px-6" onClick={handleSave} disabled={saving}>
-                {saving && <LoaderCircle className="animate-spin" />}
+              <Button size="lg" className="h-11 px-6" onClick={handlePublish} disabled={saving}>
+                {publishing ? <LoaderCircle className="animate-spin" /> : <Send />}
+                {publishing ? "Publishing…" : "Publish now"}
+              </Button>
+              <Button size="lg" variant="outline" className="h-11 px-6" onClick={handleSave} disabled={saving}>
+                {saving && !publishing && <LoaderCircle className="animate-spin" />}
                 Save draft
               </Button>
               {message && (
@@ -314,8 +365,12 @@ export function Composer({
                   {message.text}
                 </span>
               )}
-              <span className="ml-auto text-xs text-muted-foreground">Publishing arrives in the next step.</span>
             </div>
+            {publishing && (
+              <p className="text-xs text-muted-foreground">
+                Videos can take a few minutes, because Instagram and YouTube process them first. Keep this tab open.
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>

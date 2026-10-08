@@ -28,7 +28,7 @@ export function PostPreview({
 function Avatar({ account, size = 32 }: { account: PreviewAccount; size?: number }) {
   return account.avatarUrl ? (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={account.avatarUrl} alt="" width={size} height={size} className="rounded-full object-cover" style={{ width: size, height: size }} />
+    <img src={account.avatarUrl} alt="" referrerPolicy="no-referrer" width={size} height={size} className="rounded-full object-cover" style={{ width: size, height: size }} />
   ) : (
     <span className="rounded-full bg-accent" style={{ width: size, height: size }} />
   );

@@ -215,3 +215,85 @@ export async function getPosts(): Promise<PostListItem[]> {
     };
   });
 }
+
+export type PostTargetDetail = {
+  id: string;
+  status: "pending" | "publishing" | "published" | "failed";
+  platform: PlatformId;
+  accountName: string;
+  accountAvatar: string | null;
+  url: string | null;
+  error: string | null;
+  publishedAt: string | null;
+};
+
+// One post with each account's result, for the post details page.
+export async function getPostDetail(postId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("posts")
+    .select(
+      `id, caption, status, scheduled_at, published_at, updated_at,
+       post_media ( position, media ( storage_path, mime_type ) ),
+       post_targets ( id, status, external_url, error_message, published_at,
+         social_accounts ( platform, display_name, username, avatar_url ) )`
+    )
+    .eq("id", postId)
+    .maybeSingle();
+  if (error) throw new Error(`Couldn't load the post: ${error.message}`);
+  if (!data) return null;
+
+  type Row = {
+    id: string;
+    caption: string;
+    status: PostStatus;
+    scheduled_at: string | null;
+    published_at: string | null;
+    updated_at: string;
+    post_media: { position: number; media: { storage_path: string; mime_type: string } | null }[];
+    post_targets: {
+      id: string;
+      status: PostTargetDetail["status"];
+      external_url: string | null;
+      error_message: string | null;
+      published_at: string | null;
+      social_accounts: {
+        platform: PlatformId;
+        display_name: string | null;
+        username: string | null;
+        avatar_url: string | null;
+      } | null;
+    }[];
+  };
+  const p = data as unknown as Row;
+
+  return {
+    id: p.id,
+    caption: p.caption,
+    status: p.status,
+    scheduledAt: p.scheduled_at,
+    publishedAt: p.published_at,
+    updatedAt: p.updated_at,
+    media: [...p.post_media]
+      .sort((a, b) => a.position - b.position)
+      .filter((pm) => pm.media)
+      .map((pm) => ({
+        url: mediaUrl(pm.media!.storage_path),
+        kind: pm.media!.mime_type.startsWith("video/") ? ("video" as const) : ("image" as const),
+      })),
+    targets: p.post_targets
+      .filter((t) => t.social_accounts)
+      .map(
+        (t): PostTargetDetail => ({
+          id: t.id,
+          status: t.status,
+          platform: t.social_accounts!.platform,
+          accountName: t.social_accounts!.display_name ?? t.social_accounts!.username ?? "",
+          accountAvatar: t.social_accounts!.avatar_url,
+          url: t.external_url,
+          error: t.error_message,
+          publishedAt: t.published_at,
+        })
+      ),
+  };
+}

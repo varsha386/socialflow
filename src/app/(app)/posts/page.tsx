@@ -77,9 +77,9 @@ export default async function PostsPage() {
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">
+                    <Link href={`/posts/${post.id}`} className="block truncate text-sm font-medium hover:underline">
                       {post.caption || <span className="text-muted-foreground">No caption</span>}
-                    </p>
+                    </Link>
                     <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                       <Badge variant={status.variant}>{status.label}</Badge>
                       <span>{when}</span>

@@ -106,7 +106,7 @@ export default async function ConnectionsPage({ searchParams }: PageProps<"/conn
                         <li key={a.id} className="flex items-center gap-3 rounded-xl bg-muted px-3 py-2">
                           {a.avatar_url ? (
                             // eslint-disable-next-line @next/next/no-img-element
-                            <img src={a.avatar_url} alt="" className="size-8 rounded-full object-cover" />
+                            <img src={a.avatar_url} alt="" referrerPolicy="no-referrer" className="size-8 rounded-full object-cover" />
                           ) : (
                             <span className="size-8 rounded-full bg-accent" />
                           )}
