@@ -2,6 +2,7 @@ import {
   CalendarDays,
   ChartColumn,
   LayoutDashboard,
+  Layers,
   List,
   Plug,
   Settings,
@@ -18,6 +19,7 @@ export type NavItem = {
 export const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/create", label: "Create post", icon: SquarePen },
+  { href: "/bulk", label: "Bulk upload", icon: Layers },
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
   { href: "/posts", label: "Posts", icon: List },
   { href: "/connections", label: "Connections", icon: Plug },
