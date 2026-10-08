@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import { mediaUrl } from "@/lib/media";
 import type { PlatformId } from "@/lib/platforms";
 import type { MediaItem, YouTubeOptions } from "@/lib/post-rules";
+import { utcToZonedInput } from "@/lib/timezone";
 import type { PostStatus, Profile, SocialAccount } from "@/lib/types";
 
 // The logged-in user and their profile. `cache` means the layout and the
@@ -296,4 +297,57 @@ export async function getPostDetail(postId: string) {
         })
       ),
   };
+}
+
+export type CalendarPost = {
+  id: string;
+  status: PostStatus;
+  caption: string;
+  platforms: PlatformId[];
+  at: string; // ISO time it goes out (scheduled) or went out (published)
+  localDate: string; // "YYYY-MM-DD" in the user's time zone
+  localTime: string; // "HH:mm" in the user's time zone
+};
+
+// Scheduled and published posts between two moments, placed on the user's calendar days.
+export async function getCalendarPosts(fromIso: string, toIso: string, timeZone: string): Promise<CalendarPost[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("posts")
+    .select("id, status, caption, scheduled_at, published_at, post_targets ( social_accounts ( platform ) )")
+    .neq("status", "draft")
+    .or(
+      `and(scheduled_at.gte.${fromIso},scheduled_at.lt.${toIso}),and(published_at.gte.${fromIso},published_at.lt.${toIso})`
+    )
+    .limit(500);
+  if (error) throw new Error(`Couldn't load the calendar: ${error.message}`);
+
+  type Row = {
+    id: string;
+    status: PostStatus;
+    caption: string;
+    scheduled_at: string | null;
+    published_at: string | null;
+    post_targets: { social_accounts: { platform: PlatformId } | null }[];
+  };
+
+  return (data as unknown as Row[])
+    .map((p) => {
+      const waiting = p.status === "scheduled" || p.status === "publishing";
+      const at = (waiting ? p.scheduled_at : p.published_at ?? p.scheduled_at)!;
+      const local = utcToZonedInput(new Date(at), timeZone);
+      const platforms = new Set(p.post_targets.map((t) => t.social_accounts?.platform).filter(Boolean));
+      return {
+        id: p.id,
+        status: p.status,
+        caption: p.caption,
+        platforms: [...platforms] as PlatformId[],
+        at,
+        localDate: local.slice(0, 10),
+        localTime: local.slice(11, 16),
+      };
+    })
+    // Compare as real times: Supabase writes "+00:00" where JavaScript writes "Z".
+    .filter((p) => Date.parse(p.at) >= Date.parse(fromIso) && Date.parse(p.at) < Date.parse(toIso))
+    .sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
 }

@@ -40,3 +40,19 @@ export function utcToZonedInput(date: Date, timeZone: string): string {
   const shifted = new Date(date.getTime() + offsetMs(date.getTime(), timeZone));
   return shifted.toISOString().slice(0, 16);
 }
+
+// Some systems still use old names for renamed places. Show the current names.
+const RENAMED: Record<string, string> = {
+  "Asia/Calcutta": "Asia/Kolkata",
+  "Asia/Katmandu": "Asia/Kathmandu",
+  "Asia/Rangoon": "Asia/Yangon",
+  "Asia/Saigon": "Asia/Ho_Chi_Minh",
+  "Europe/Kiev": "Europe/Kyiv",
+  "Atlantic/Faeroe": "Atlantic/Faroe",
+  "America/Godthab": "America/Nuuk",
+};
+
+// A time zone name for people to read, e.g. "Asia/Calcutta" -> "Asia/Kolkata".
+export function timeZoneLabel(timeZone: string) {
+  return (RENAMED[timeZone] ?? timeZone).replaceAll("_", " ");
+}

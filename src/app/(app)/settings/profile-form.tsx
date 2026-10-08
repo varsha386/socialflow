@@ -5,6 +5,8 @@ import { CircleCheck, LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { sameTimeZone } from "@/components/timezone-warning";
+import { timeZoneLabel } from "@/lib/timezone";
 import { updateProfile, type ProfileFormState } from "./actions";
 
 const noSubscribe = () => () => {};
@@ -57,26 +59,28 @@ export function ProfileForm({
           onChange={(e) => setZone(e.target.value)}
           className="h-11 w-full rounded-lg border border-input bg-card px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
         >
-          {timezones.map((tz) => (
+          {/* Include the chosen zone even if the list spells it differently (e.g. Asia/Kolkata vs Asia/Calcutta). */}
+          {(timezones.includes(zone) ? timezones : [zone, ...timezones]).map((tz) => (
             <option key={tz} value={tz}>
-              {tz.replaceAll("_", " ")}
+              {timeZoneLabel(tz)}
             </option>
           ))}
         </select>
         <p className="text-xs text-muted-foreground">
           Scheduled posts go out at this time zone&apos;s clock.
-          {browserZone && browserZone !== zone && (
+          {browserZone && !sameTimeZone(browserZone, zone) && (
             <>
               {" "}
               <button
                 type="button"
                 className="font-medium text-primary hover:underline"
                 onClick={() => {
-                  setZone(browserZone);
+                  // Pick the list's own spelling of this zone, so it isn't listed twice.
+                  setZone(timezones.find((tz) => sameTimeZone(tz, browserZone)) ?? browserZone);
                   setDirty(true);
                 }}
               >
-                Use {browserZone.replaceAll("_", " ")}
+                Use {timeZoneLabel(browserZone)}
               </button>
             </>
           )}

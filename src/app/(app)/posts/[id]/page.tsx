@@ -7,6 +7,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentUser, getPostDetail, type PostTargetDetail } from "@/lib/data";
 import { PLATFORMS } from "@/lib/platforms";
+import { timeZoneLabel } from "@/lib/timezone";
 import { AutoRefresh, RetryButton, ScheduledActions } from "./post-actions";
 
 export const metadata: Metadata = { title: "Post" };
@@ -49,7 +50,7 @@ export default async function PostDetailPage({ params }: PageProps<"/posts/[id]"
           <h1 className="text-2xl font-semibold tracking-tight">{HEADLINES[post.status]}</h1>
           <p className="mt-1 text-muted-foreground">
             {post.status === "scheduled" && post.scheduledAt
-              ? `Goes out ${format(post.scheduledAt)} (${user.timezone.replaceAll("_", " ")})`
+              ? `Goes out ${format(post.scheduledAt)} (${timeZoneLabel(user.timezone)})`
               : post.publishedAt
                 ? `Published ${format(post.publishedAt)}`
                 : `Last edited ${format(post.updatedAt)}`}

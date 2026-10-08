@@ -9,6 +9,7 @@ import { CaptionEditor } from "@/components/composer/caption-editor";
 import { MediaUploader } from "@/components/composer/media-uploader";
 import { PostPreview } from "@/components/composer/post-preview";
 import { PlatformBadge } from "@/components/platform-badge";
+import { TimezoneWarning } from "@/components/timezone-warning";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,7 +23,7 @@ import {
   type MediaItem,
   type YouTubeOptions,
 } from "@/lib/post-rules";
-import { utcToZonedInput } from "@/lib/timezone";
+import { timeZoneLabel, utcToZonedInput } from "@/lib/timezone";
 import type { SocialAccount } from "@/lib/types";
 
 export type ComposerInitial = {
@@ -47,9 +48,11 @@ export function Composer({
   timezone,
   accounts,
   initial,
+  suggestedDate,
 }: {
   userId: string;
   timezone: string;
+  suggestedDate?: string; // "YYYY-MM-DD" from the calendar: start with Schedule open for that day
   accounts: SocialAccount[];
   initial: ComposerInitial;
 }) {
@@ -64,8 +67,8 @@ export function Composer({
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [saving, startSaving] = useTransition();
   const [publishing, setPublishing] = useState(false);
-  const [showSchedule, setShowSchedule] = useState(false);
-  const [scheduleAt, setScheduleAt] = useState(""); // "2026-10-15T19:00" in the user's time zone
+  const [showSchedule, setShowSchedule] = useState(!!suggestedDate);
+  const [scheduleAt, setScheduleAt] = useState(suggestedDate ? `${suggestedDate}T09:00` : ""); // "2026-10-15T19:00" in the user's time zone
   const router = useRouter();
 
   // The platforms of the chosen accounts, in a fixed order.
@@ -416,6 +419,7 @@ export function Composer({
               )}
             </div>
 
+            {showSchedule && <TimezoneWarning timezone={timezone} />}
             {showSchedule && (
               <div className="flex flex-wrap items-end gap-3 rounded-2xl bg-muted p-4">
                 <div className="space-y-2">
@@ -436,7 +440,7 @@ export function Composer({
                   Schedule post
                 </Button>
                 <p className="w-full text-xs text-muted-foreground">
-                  Time zone: {timezone.replaceAll("_", " ")}.{" "}
+                  Time zone: {timeZoneLabel(timezone)}.{" "}
                   <Link href="/settings" className="font-medium text-primary hover:underline">
                     Change
                   </Link>

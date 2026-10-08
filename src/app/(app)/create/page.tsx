@@ -2,15 +2,18 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Composer, type ComposerInitial } from "@/components/composer/composer";
 import { PageHeader } from "@/components/page-header";
+import { isValidDate } from "@/lib/calendar";
 import { getCurrentUser, getDraft, getSocialAccounts } from "@/lib/data";
 
 export const metadata: Metadata = { title: "Create post" };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-// /create starts a new post; /create?post=<id> reopens a saved draft.
+// /create starts a new post; /create?post=<id> reopens a saved draft;
+// /create?date=YYYY-MM-DD (from the calendar) starts one with Schedule set to that day.
 export default async function CreatePostPage({ searchParams }: PageProps<"/create">) {
-  const { post } = await searchParams;
+  const { post, date } = await searchParams;
+  const suggestedDate = typeof date === "string" && isValidDate(date) ? date : undefined;
   const postId = typeof post === "string" && UUID.test(post) ? post : null;
 
   const [user, allAccounts, draft] = await Promise.all([
@@ -53,6 +56,7 @@ export default async function CreatePostPage({ searchParams }: PageProps<"/creat
         timezone={user.timezone}
         accounts={accounts}
         initial={initial}
+        suggestedDate={suggestedDate}
       />
     </>
   );
