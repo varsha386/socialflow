@@ -2,7 +2,7 @@
 
 Save screenshots here with these exact names so they show in the README:
 
-- create.png
+- create-post.png
 - calendar.png
 - analytics.png
 - inbox.png

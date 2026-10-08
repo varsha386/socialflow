@@ -2,6 +2,6 @@
 // CHANGE CONTACT_EMAIL to an address you're happy to show publicly.
 export const SITE = {
   name: "SocialFlow",
-  contactEmail: "socialflow.varshasri803@gmail.com",
+  contactEmail: "varshasri803@gmail.com",
   lastUpdated: "October 8, 2026",
 };
