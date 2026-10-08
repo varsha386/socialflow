@@ -1,5 +1,6 @@
 import {
   CalendarDays,
+  Inbox,
   ChartColumn,
   LayoutDashboard,
   Layers,
@@ -22,6 +23,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/bulk", label: "Bulk upload", icon: Layers },
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
   { href: "/posts", label: "Posts", icon: List },
+  { href: "/inbox", label: "Inbox", icon: Inbox },
   { href: "/connections", label: "Connections", icon: Plug },
   { href: "/analytics", label: "Analytics", icon: ChartColumn },
   { href: "/settings", label: "Settings", icon: Settings },

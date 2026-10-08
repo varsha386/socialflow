@@ -1,5 +1,6 @@
 import "server-only";
 import { refreshUserMetrics } from "@/lib/analytics/collect";
+import { syncUserComments } from "@/lib/inbox";
 import { publishPost } from "@/lib/publishing";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { POST_SCHEDULED, inngest, type PostScheduledData } from "./client";
@@ -69,4 +70,23 @@ export const refreshAllMetrics = inngest.createFunction(
   }
 );
 
-export const functions = [publishScheduledPost, refreshAllMetrics];
+
+// Every 30 minutes: collect new comments for everyone with a connected account.
+export const syncAllComments = inngest.createFunction(
+  { id: "sync-all-comments", triggers: [{ cron: "*/30 * * * *" }], retries: 1 },
+  async ({ step }) => {
+    const userIds = await step.run("find-users", async () => {
+      const { data } = await createAdminClient()
+        .from("social_accounts")
+        .select("user_id")
+        .eq("status", "connected");
+      return [...new Set((data ?? []).map((r) => r.user_id as string))];
+    });
+    for (const userId of userIds) {
+      await step.run(`sync-${userId}`, () => syncUserComments(userId));
+    }
+    return { users: userIds.length };
+  }
+);
+
+export const functions = [publishScheduledPost, refreshAllMetrics, syncAllComments];

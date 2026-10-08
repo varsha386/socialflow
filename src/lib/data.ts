@@ -484,3 +484,94 @@ export async function getAnalytics(timeZone: string): Promise<AnalyticsData> {
     lastRefreshed: (profileRes.data?.metrics_refreshed_at as string | null) ?? null,
   };
 }
+
+export type InboxComment = {
+  id: string;
+  author: string | null;
+  avatarUrl: string | null;
+  text: string;
+  isOwn: boolean;
+  createdAt: string;
+};
+
+export type InboxThread = InboxComment & {
+  platform: PlatformId;
+  accountName: string;
+  postId: string;
+  postCaption: string;
+  postUrl: string | null;
+  replies: InboxComment[];
+  needsReply: boolean;
+};
+
+// Comment threads on the user's posts, newest first. A thread "needs a reply" when
+// someone else wrote it and your account hasn't replied in it yet.
+export async function getInbox(): Promise<{ threads: InboxThread[]; lastSynced: string | null }> {
+  const supabase = await createClient();
+  const [commentsRes, profileRes] = await Promise.all([
+    supabase
+      .from("comments")
+      .select(
+        `id, platform_comment_id, parent_comment_id, author_name, author_avatar_url, text, is_own, created_at,
+         post_targets ( post_id, external_url, social_accounts ( platform, display_name, username ), posts ( caption ) )`
+      )
+      .order("created_at", { ascending: false })
+      .limit(1000),
+    supabase.from("profiles").select("inbox_synced_at").maybeSingle(),
+  ]);
+  if (commentsRes.error) throw new Error(`Couldn't load the inbox: ${commentsRes.error.message}`);
+
+  type Row = {
+    id: string;
+    platform_comment_id: string;
+    parent_comment_id: string | null;
+    author_name: string | null;
+    author_avatar_url: string | null;
+    text: string;
+    is_own: boolean;
+    created_at: string;
+    post_targets: {
+      post_id: string;
+      external_url: string | null;
+      social_accounts: { platform: PlatformId; display_name: string | null; username: string | null } | null;
+      posts: { caption: string } | null;
+    } | null;
+  };
+  const rows = (commentsRes.data ?? []) as unknown as Row[];
+  const toComment = (r: Row): InboxComment => ({
+    id: r.id,
+    author: r.author_name,
+    avatarUrl: r.author_avatar_url,
+    text: r.text,
+    isOwn: r.is_own,
+    createdAt: r.created_at,
+  });
+
+  // Replies grouped under their top-level comment, oldest reply first.
+  const repliesByParent = new Map<string, InboxComment[]>();
+  for (const r of rows) {
+    if (!r.parent_comment_id) continue;
+    const list = repliesByParent.get(r.parent_comment_id) ?? [];
+    list.unshift(toComment(r));
+    repliesByParent.set(r.parent_comment_id, list);
+  }
+
+  const threads: InboxThread[] = rows
+    .filter((r) => !r.parent_comment_id && r.post_targets)
+    .map((r) => {
+      const replies = repliesByParent.get(r.platform_comment_id) ?? [];
+      const account = r.post_targets!.social_accounts;
+      return {
+        ...toComment(r),
+        platform: account?.platform ?? "facebook",
+        accountName: account?.display_name ?? account?.username ?? "",
+        postId: r.post_targets!.post_id,
+        postCaption: r.post_targets!.posts?.caption ?? "",
+        postUrl: r.post_targets!.external_url,
+        replies,
+        needsReply: !r.is_own && !replies.some((x) => x.isOwn),
+      };
+    });
+
+  return { threads, lastSynced: (profileRes.data?.inbox_synced_at as string | null) ?? null };
+}

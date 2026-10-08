@@ -8,6 +8,7 @@ const PROTECTED = [
   "/bulk",
   "/calendar",
   "/posts",
+  "/inbox",
   "/connections",
   "/analytics",
   "/settings",

@@ -16,6 +16,9 @@ const SCOPES = [
   "business_management", // include Pages owned through a Business portfolio
   "instagram_basic", // see linked Instagram accounts
   "instagram_content_publish", // publish to Instagram
+  "pages_read_user_content", // read comments on Page posts (Inbox)
+  "pages_manage_engagement", // reply to comments as the Page (Inbox)
+  "instagram_manage_comments", // read and reply to Instagram comments (Inbox)
 ];
 
 type GraphError = { error?: { message: string } };

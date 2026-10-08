@@ -7,6 +7,7 @@ import type { ConnectedAccount, Connector } from "./types";
 const SCOPES = [
   "https://www.googleapis.com/auth/youtube.upload", // upload videos
   "https://www.googleapis.com/auth/youtube.readonly", // read channel info and stats
+  "https://www.googleapis.com/auth/youtube.force-ssl", // reply to comments (Inbox)
 ];
 
 type TokenResponse = {
