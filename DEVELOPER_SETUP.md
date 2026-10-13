@@ -84,10 +84,14 @@ git config --global user.email "you@example.com"
 
 ### 2.3 Get the code
 
-Accept the GitHub collaborator invite first. Then:
+Accept the GitHub collaborator invite first. Then create a `Development` folder on the **D: drive** (skip this if it already exists) and go into it:
 
 ```bash
-cd C:\Development
+New-Item -ItemType Directory -Force D:\Development
+```
+
+```bash
+cd D:\Development
 ```
 
 ```bash
@@ -100,14 +104,14 @@ cd socialflow
 
 The first time you push, a GitHub sign-in window opens. Sign in and click **Authorize**.
 
-> Keep the folder path free of spaces (for example `C:\Development\socialflow`). Some tools break on paths with spaces.
+> **No D: drive?** Use `C:\Development` instead in these steps. Any folder works, as long as the path has no spaces (for example `D:\Development\socialflow`, not `D:\My Projects\socialflow`). Some tools break on paths with spaces.
 
 ### 2.4 Add the settings file
 
 Save the `.env.local` file you received from the owner in the project folder, next to `package.json`:
 
 ```
-C:\Development\socialflow\.env.local
+D:\Development\socialflow\.env.local
 ```
 
 It should contain these settings (with real values). [.env.example](.env.example) lists them with explanations:
