@@ -74,6 +74,8 @@ supabase/migrations/  Database setup, run in order
 
 ## Running it yourself
 
+> **Working on SocialFlow with the team?** Follow [DEVELOPER_SETUP.md](DEVELOPER_SETUP.md) instead: it covers shared settings, branches and pull requests, and database rules.
+
 1. Install [Node.js](https://nodejs.org) (LTS).
 2. Create a [Supabase](https://supabase.com) project and run each file in `supabase/migrations/` **in order** in its SQL Editor.
 3. Copy `.env.example` to `.env.local` and fill it in:
