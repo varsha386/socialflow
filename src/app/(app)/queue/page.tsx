@@ -4,18 +4,22 @@ import { CalendarClock, ListClock } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { PlatformBadge } from "@/components/platform-badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getCurrentUser, getQueueOverview, getQueueSlots } from "@/lib/data";
+import { getBestTimes, getCurrentUser, getQueueOverview, getQueueSlots } from "@/lib/data";
 import { PLATFORMS } from "@/lib/platforms";
 import { WEEKDAYS } from "@/lib/queue";
 import { timeZoneLabel } from "@/lib/timezone";
-import { AddTimesForm, RemoveTimeButton } from "./queue-times";
+import { AddTimesForm, RemoveTimeButton, SuggestedTimes } from "./queue-times";
 
 export const metadata: Metadata = { title: "Queue" };
 
 export default async function QueuePage() {
   const user = await getCurrentUser();
-  const slots = await getQueueSlots();
+  const [slots, best] = await Promise.all([getQueueSlots(), getBestTimes(user.timezone)]);
   const items = await getQueueOverview(user.timezone, slots);
+  const suggested = best.times.map((t) => ({
+    ...t,
+    inQueue: slots.some((s) => s.weekday === t.weekday && s.time === t.time),
+  }));
 
   const formatDay = (iso: string) =>
     new Intl.DateTimeFormat("en", { weekday: "long", day: "numeric", month: "short", timeZone: user.timezone }).format(
@@ -68,6 +72,7 @@ export default async function QueuePage() {
               </ul>
             )}
             <AddTimesForm hasTimes={slots.length > 0} />
+            <SuggestedTimes personal={best.personal} times={suggested} />
           </CardContent>
         </Card>
 

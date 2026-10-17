@@ -101,6 +101,59 @@ export function AddTimesForm({ hasTimes }: { hasTimes: boolean }) {
   );
 }
 
+// Best times to post, each with a one-click "add to my queue".
+export function SuggestedTimes({
+  personal,
+  times,
+}: {
+  personal: boolean;
+  times: { weekday: number; time: string; inQueue: boolean }[];
+}) {
+  const [pending, startTransition] = useTransition();
+  const [adding, setAdding] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  return (
+    <div className="space-y-2 border-t pt-5">
+      <p className="text-sm font-medium">Suggested times</p>
+      <p className="text-xs text-muted-foreground">
+        {personal ? "When your past posts got the most likes, comments and shares." : "General good times, until you have more posts of your own."}
+      </p>
+      <div className="flex flex-wrap gap-1.5">
+        {times.map((t) => {
+          const key = `${t.weekday}-${t.time}`;
+          const label = `${WEEKDAYS[t.weekday - 1].short} ${formatSlotTime(t.time)}`;
+          return t.inQueue ? (
+            <span key={key} className="rounded-full border border-dashed px-3 py-1 text-sm text-muted-foreground">
+              {label} · in queue
+            </span>
+          ) : (
+            <button
+              key={key}
+              type="button"
+              disabled={pending}
+              onClick={() => {
+                setAdding(key);
+                startTransition(async () => {
+                  const result = await addQueueTimes([t.weekday], t.time);
+                  setError(result.error ?? null);
+                  setAdding(null);
+                });
+              }}
+              className="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm hover:bg-accent hover:text-accent-foreground disabled:opacity-50"
+              aria-label={`Add ${WEEKDAYS[t.weekday - 1].long} ${formatSlotTime(t.time)} to your queue`}
+            >
+              {adding === key ? <LoaderCircle className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />}
+              {label}
+            </button>
+          );
+        })}
+      </div>
+      {error && <p className="text-sm text-destructive">{error}</p>}
+    </div>
+  );
+}
+
 // One posting time, shown as a chip with a remove button.
 export function RemoveTimeButton({ slot, dayName }: { slot: QueueSlot; dayName: string }) {
   const [pending, startTransition] = useTransition();

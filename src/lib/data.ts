@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import { mediaUrl } from "@/lib/media";
 import type { PlatformId } from "@/lib/platforms";
 import type { MediaItem, YouTubeOptions } from "@/lib/post-rules";
+import { engagementScore, rankBestTimes, type BestTimes } from "@/lib/best-time";
 import { QUEUE_HORIZON_DAYS, minuteOf, upcomingSlotTimes, type QueueSlot } from "@/lib/queue";
 import { utcToZonedInput } from "@/lib/timezone";
 import type { PostStatus, Profile, SocialAccount } from "@/lib/types";
@@ -421,6 +422,51 @@ export async function getQueueOverview(timeZone: string, slots: QueueSlot[], day
     else items.push({ at: p.at, isSlot: false, post });
   }
   return items.sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+}
+
+// The best weekday + hour to post, from the engagement on posts published in the
+// last 90 days. Posts from the last 24 hours are skipped while their numbers grow.
+// `cache`: Create and Queue can both ask during one request.
+export const getBestTimes = cache(async (timeZone: string): Promise<BestTimes> => {
+  const supabase = await createClient();
+  const now = Date.now();
+  const { data, error } = await supabase
+    .from("post_targets")
+    .select("published_at, post_metrics ( likes, comments, shares )")
+    .eq("status", "published")
+    .gte("published_at", new Date(now - 90 * 24 * 60 * 60 * 1000).toISOString())
+    .lt("published_at", new Date(now - 24 * 60 * 60 * 1000).toISOString())
+    .limit(1000);
+  if (error) throw new Error(`Couldn't work out your best times: ${error.message}`);
+
+  type MetricRow = { likes: number | null; comments: number | null; shares: number | null };
+  type Row = { published_at: string; post_metrics: MetricRow | MetricRow[] | null };
+  const posts = (data as unknown as Row[]).flatMap((t) => {
+    const m = Array.isArray(t.post_metrics) ? t.post_metrics[0] : t.post_metrics;
+    if (!m) return []; // numbers not collected yet
+    const score = engagementScore({
+      likes: Number(m.likes ?? 0),
+      comments: Number(m.comments ?? 0),
+      shares: Number(m.shares ?? 0),
+    });
+    return [{ publishedAt: t.published_at, score }];
+  });
+  return rankBestTimes(posts, timeZone);
+});
+
+// The best times as their next dates, for the Schedule panel on Create:
+// e.g. Tuesday 11:00 -> { label: "Tue 11:00 AM", local: "2026-10-20T11:00" }.
+export async function getBestTimeSuggestions(timeZone: string) {
+  const best = await getBestTimes(timeZone);
+  const soon = new Date(Date.now() + 5 * 60 * 1000);
+  const label = new Intl.DateTimeFormat("en", { weekday: "short", hour: "numeric", minute: "2-digit", timeZone });
+  return {
+    personal: best.personal,
+    times: best.times.flatMap((t) => {
+      const [at] = upcomingSlotTimes([{ id: "", ...t }], timeZone, soon, 8);
+      return at ? [{ label: label.format(at), local: utcToZonedInput(at, timeZone) }] : [];
+    }),
+  };
 }
 
 export type AnalyticsData = {
