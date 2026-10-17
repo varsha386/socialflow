@@ -330,7 +330,7 @@ export function BulkScheduler({
                       )}
                     </div>
                     {row.problems.length > 0 && !done && (
-                      <p className="flex items-start gap-1.5 text-xs text-amber-700">
+                      <p className="flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-400">
                         <TriangleAlert className="mt-px size-3.5 shrink-0" />
                         {row.problems.join(" ")}
                       </p>

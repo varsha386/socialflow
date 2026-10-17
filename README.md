@@ -26,6 +26,8 @@
 | **Bulk upload** | Turn up to 30 files into separate posts, spaced every N hours or days |
 | **Analytics** | Likes, comments, shares, YouTube views and follower growth, collected every 6 hours |
 | **Inbox** | Comments from all three platforms in one place, with replies sent as your Page, account or channel |
+| **Post again** | Copy any earlier post (caption, media, accounts, per-platform captions) into a new one from the Posts list or a post's page, change it, and publish or schedule it. The original is left as it was |
+| **Dark mode** | Light, dark or follow-the-computer, chosen in Settings or with the sun/moon button in the sidebar. Saved in the browser and applied before the page paints, so there's no white flash |
 
 ## How it works
 
