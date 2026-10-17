@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { FileText, Pencil, Play, SquarePen } from "lucide-react";
+import { Copy, FileText, Pencil, Play, SquarePen } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { PlatformBadge } from "@/components/platform-badge";
 import { Badge } from "@/components/ui/badge";
@@ -95,19 +95,29 @@ export default async function PostsPage() {
                     ))}
                   </div>
 
-                  {post.status === "draft" && (
-                    <div className="flex items-center">
-                      <Link
-                        href={`/create?post=${post.id}`}
-                        className="flex size-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-                        aria-label="Edit draft"
-                        title="Edit draft"
-                      >
-                        <Pencil className="size-4" />
-                      </Link>
-                      <DeleteDraftButton postId={post.id} />
-                    </div>
-                  )}
+                  <div className="flex items-center">
+                    <Link
+                      href={`/create?from=${post.id}`}
+                      className="flex size-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                      aria-label={post.status === "draft" ? "Duplicate" : "Post again"}
+                      title={post.status === "draft" ? "Duplicate" : "Post again"}
+                    >
+                      <Copy className="size-4" />
+                    </Link>
+                    {post.status === "draft" && (
+                      <>
+                        <Link
+                          href={`/create?post=${post.id}`}
+                          className="flex size-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                          aria-label="Edit draft"
+                          title="Edit draft"
+                        >
+                          <Pencil className="size-4" />
+                        </Link>
+                        <DeleteDraftButton postId={post.id} />
+                      </>
+                    )}
+                  </div>
                 </li>
               );
             })}

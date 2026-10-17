@@ -80,7 +80,8 @@ export async function getDashboardStats() {
   };
 }
 
-// Everything the Create post screen needs to reopen a saved draft.
+// Everything the Create post screen needs to reopen a saved draft,
+// or to copy any earlier post for "Post again".
 export async function getDraft(postId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
