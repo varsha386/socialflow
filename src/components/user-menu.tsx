@@ -3,11 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { signOut } from "@/lib/auth";
 
 export type CurrentUser = { name: string; email: string };
 
-// The logged-in person's name and email, with a log out button.
+// The logged-in person's name and email, with light/dark and log out buttons.
 export function UserMenu({ user, compact = false }: { user: CurrentUser; compact?: boolean }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -38,7 +39,14 @@ export function UserMenu({ user, compact = false }: { user: CurrentUser; compact
     </button>
   );
 
-  if (compact) return logOutButton;
+  if (compact) {
+    return (
+      <div className="flex items-center gap-1">
+        <ThemeToggle />
+        {logOutButton}
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center gap-3 rounded-2xl bg-card p-2 ring-1 ring-border">
@@ -49,6 +57,7 @@ export function UserMenu({ user, compact = false }: { user: CurrentUser; compact
         <p className="truncate text-sm font-medium">{user.name}</p>
         <p className="truncate text-xs text-muted-foreground">{user.email}</p>
       </div>
+      <ThemeToggle />
       {logOutButton}
     </div>
   );

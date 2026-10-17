@@ -26,6 +26,7 @@
 | **Bulk upload** | Turn up to 30 files into separate posts, spaced every N hours or days |
 | **Analytics** | Likes, comments, shares, YouTube views and follower growth, collected every 6 hours |
 | **Inbox** | Comments from all three platforms in one place, with replies sent as your Page, account or channel |
+| **Dark mode** | Light, dark or follow-the-computer, chosen in Settings or with the sun/moon button in the sidebar. Saved in the browser and applied before the page paints, so there's no white flash |
 
 ## How it works
 

@@ -381,7 +381,7 @@ export function Composer({
                     {problems.length === 0 ? (
                       <CircleCheck className="mt-0.5 size-4 shrink-0 text-primary" />
                     ) : (
-                      <TriangleAlert className="mt-0.5 size-4 shrink-0 text-amber-600" />
+                      <TriangleAlert className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
                     )}
                     <span>
                       <span className="font-medium">{platformInfo(platform).name}:</span>{" "}

@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { getCurrentUser } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import { timeZoneLabel } from "@/lib/timezone";
+import { AppearanceCard } from "./appearance-card";
 import { ProfileForm } from "./profile-form";
 import { TwoStepCard } from "./two-step-card";
 
@@ -39,6 +40,10 @@ export default async function SettingsPage() {
           />
         </CardContent>
       </Card>
+
+      <div className="mt-6">
+        <AppearanceCard />
+      </div>
 
       <div className="mt-6">
         <TwoStepCard enabled={twoStepOn} />
