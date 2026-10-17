@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getNextFreeSlot } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import type { PlatformId } from "@/lib/platforms";
 import type { YouTubeOptions } from "@/lib/post-rules";
@@ -124,11 +125,34 @@ export async function schedulePost(postId: string, localDateTime: string): Promi
 
   const when = zonedTimeToUtc(localDateTime, timeZone);
   if (!when) return { error: "Choose a date and time." };
+  return scheduleAt(postId, user.id, when);
+}
+
+// Schedules a saved draft at the next free time in the user's posting queue.
+export async function addToQueue(postId: string): Promise<ScheduleResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Your session expired. Log in again." };
+
+  const { data: profile } = await supabase.from("profiles").select("timezone").eq("id", user.id).maybeSingle();
+  const when = await getNextFreeSlot(profile?.timezone ?? "UTC");
+  if (!when) {
+    return { error: "Your queue has no free times in the next 8 weeks. Add more posting times on the Queue page." };
+  }
+  return scheduleAt(postId, user.id, when);
+}
+
+// Shared by "Schedule" and "Add to queue": checks the time and the post, then
+// marks it scheduled and tells the scheduler (Inngest).
+async function scheduleAt(postId: string, userId: string, when: Date): Promise<ScheduleResult> {
+  const supabase = await createClient();
   if (when.getTime() < Date.now() + 2 * 60 * 1000) return { error: "Choose a time at least 2 minutes from now." };
   if (when.getTime() > Date.now() + 365 * 24 * 60 * 60 * 1000) return { error: "Choose a time within the next year." };
 
   // Run the same checks as "Publish now", so problems show up today, not at 7 PM.
-  const problem = await checkReadyToPublish(postId, user.id);
+  const problem = await checkReadyToPublish(postId, userId);
   if (problem) return { error: problem };
 
   const scheduledAt = when.toISOString();
@@ -144,7 +168,7 @@ export async function schedulePost(postId: string, localDateTime: string): Promi
   try {
     await inngest.send({
       name: POST_SCHEDULED,
-      data: { postId, userId: user.id, scheduledAt } satisfies PostScheduledData,
+      data: { postId, userId, scheduledAt } satisfies PostScheduledData,
     });
   } catch (err) {
     console.error("[schedule] couldn't reach Inngest:", err);
@@ -155,6 +179,7 @@ export async function schedulePost(postId: string, localDateTime: string): Promi
 
   revalidatePath("/posts");
   revalidatePath("/dashboard");
+  revalidatePath("/queue");
   return { scheduledAt };
 }
 
@@ -174,5 +199,6 @@ export async function unschedulePost(postId: string): Promise<{ error?: string }
   revalidatePath("/posts");
   revalidatePath(`/posts/${postId}`);
   revalidatePath("/dashboard");
+  revalidatePath("/queue");
   return {};
 }
