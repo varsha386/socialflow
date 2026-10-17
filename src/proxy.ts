@@ -11,6 +11,7 @@ const PROTECTED = [
   "/posts",
   "/inbox",
   "/connections",
+  "/bio",
   "/analytics",
   "/settings",
   "/reset-password",

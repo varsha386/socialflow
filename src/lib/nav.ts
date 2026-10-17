@@ -4,6 +4,7 @@ import {
   ChartColumn,
   LayoutDashboard,
   Layers,
+  Link2,
   List,
   ListClock,
   Plug,
@@ -27,6 +28,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/posts", label: "Posts", icon: List },
   { href: "/inbox", label: "Inbox", icon: Inbox },
   { href: "/connections", label: "Connections", icon: Plug },
+  { href: "/bio", label: "Link in bio", icon: Link2 },
   { href: "/analytics", label: "Analytics", icon: ChartColumn },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
