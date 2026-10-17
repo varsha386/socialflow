@@ -26,6 +26,7 @@
 | **Bulk upload** | Turn up to 30 files into separate posts, spaced every N hours or days |
 | **Analytics** | Likes, comments, shares, YouTube views and follower growth, collected every 6 hours |
 | **Inbox** | Comments from all three platforms in one place, with replies sent as your Page, account or channel |
+| **Best time to post** | Suggests the weekday and hour when your posts got the most engagement (last 90 days; comments count double, shares triple), or general good times until 5 posts have numbers. Shown on Analytics, as one-click times in Create's Schedule panel, and as suggested Queue times |
 | **Posting queue** | Set weekly posting times (e.g. weekdays at 9:00 AM) on the Queue page, then "Add to queue" on Create schedules the post at the next free time. The Queue page shows the next two weeks, free and filled |
 | **Post again** | Copy any earlier post (caption, media, accounts, per-platform captions) into a new one from the Posts list or a post's page, change it, and publish or schedule it. The original is left as it was |
 | **Dark mode** | Light, dark or follow-the-computer, chosen in Settings or with the sun/moon button in the sidebar. Saved in the browser and applied before the page paints, so there's no white flash |

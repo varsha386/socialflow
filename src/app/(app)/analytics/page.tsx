@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ChartColumn, ExternalLink } from "lucide-react";
+import { ChartColumn, Clock, ExternalLink } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { PlatformBadge } from "@/components/platform-badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { getAnalytics, getCurrentUser } from "@/lib/data";
+import { MIN_POSTS_FOR_PERSONAL } from "@/lib/best-time";
+import { getAnalytics, getBestTimes, getCurrentUser } from "@/lib/data";
 import { PLATFORMS } from "@/lib/platforms";
+import { WEEKDAYS, formatSlotTime } from "@/lib/queue";
 import { EngagementChart, RefreshButton } from "./engagement-chart";
 
 export const metadata: Metadata = { title: "Analytics" };
@@ -16,7 +18,7 @@ const fmt = (n: number) => n.toLocaleString("en");
 
 export default async function AnalyticsPage() {
   const user = await getCurrentUser();
-  const data = await getAnalytics(user.timezone);
+  const [data, best] = await Promise.all([getAnalytics(user.timezone), getBestTimes(user.timezone)]);
   const updated = data.lastRefreshed
     ? new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short", timeZone: user.timezone }).format(
         new Date(data.lastRefreshed)
@@ -110,6 +112,34 @@ export default async function AnalyticsPage() {
               </CardContent>
             </Card>
           </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Best times to post</CardTitle>
+              <CardDescription>
+                {best.personal
+                  ? `When your posts got the most likes, comments and shares (comments count double, shares triple), from ${best.basedOn} published posts in the last 90 days. Times are in ${user.timezone.replaceAll("_", " ")}.`
+                  : `General good times for now. Once ${MIN_POSTS_FOR_PERSONAL} of your posts have numbers (you have ${best.basedOn}), these will be based on your own posts.`}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-wrap items-center gap-3">
+              {best.times.map((t, i) => (
+                <span
+                  key={`${t.weekday}-${t.time}`}
+                  className="flex items-center gap-2 rounded-2xl bg-muted px-4 py-2.5 text-sm"
+                >
+                  <Clock className="size-4 text-primary" />
+                  <span className="font-medium">
+                    {i === 0 && best.personal ? "Best: " : ""}
+                    {WEEKDAYS[t.weekday - 1].long} {formatSlotTime(t.time)}
+                  </span>
+                </span>
+              ))}
+              <Link href="/queue" className="text-sm font-medium text-primary hover:underline">
+                Add to your queue
+              </Link>
+            </CardContent>
+          </Card>
 
           <Card className="gap-0 pb-0">
             <CardHeader className="pb-4">

@@ -3,7 +3,14 @@ import { notFound } from "next/navigation";
 import { Composer, type ComposerInitial } from "@/components/composer/composer";
 import { PageHeader } from "@/components/page-header";
 import { isValidDate } from "@/lib/calendar";
-import { getCurrentUser, getDraft, getNextFreeSlot, getQueueSlots, getSocialAccounts } from "@/lib/data";
+import {
+  getBestTimeSuggestions,
+  getCurrentUser,
+  getDraft,
+  getNextFreeSlot,
+  getQueueSlots,
+  getSocialAccounts,
+} from "@/lib/data";
 
 export const metadata: Metadata = { title: "Create post" };
 
@@ -28,21 +35,18 @@ export default async function CreatePostPage({ searchParams }: PageProps<"/creat
   if ((postId && !draft) || (fromId && !original)) notFound();
 
   // Written out here (not in the browser) so the server and browser show the same text.
-  const nextSlot = await getNextFreeSlot(user.timezone, queueSlots);
+  const [nextSlot, bestTimes] = await Promise.all([
+    getNextFreeSlot(user.timezone, queueSlots),
+    getBestTimeSuggestions(user.timezone),
+  ]);
+  const format = (date: Date, options: Intl.DateTimeFormatOptions) =>
+    new Intl.DateTimeFormat("en", { ...options, timeZone: user.timezone }).format(date);
   const queue = {
     hasTimes: queueSlots.length > 0,
     next: nextSlot
-      ? new Intl.DateTimeFormat("en", {
-          weekday: "short",
-          day: "numeric",
-          month: "short",
-          hour: "numeric",
-          minute: "2-digit",
-          timeZone: user.timezone,
-        }).format(nextSlot)
+      ? format(nextSlot, { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })
       : null,
   };
-
   const accounts = allAccounts.filter((a) => a.status === "connected");
   const initial: ComposerInitial = draft
     ? {
@@ -94,6 +98,7 @@ export default async function CreatePostPage({ searchParams }: PageProps<"/creat
         initial={initial}
         suggestedDate={suggestedDate}
         queue={queue}
+        bestTimes={bestTimes}
       />
     </>
   );

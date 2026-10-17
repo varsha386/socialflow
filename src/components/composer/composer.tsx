@@ -39,6 +39,10 @@ export type ComposerInitial = {
 // time, already written out in the user's time zone (e.g. "Mon 20 Oct, 9:00 AM").
 export type ComposerQueue = { hasTimes: boolean; next: string | null };
 
+// Suggested times for the Schedule panel. `local` is "2026-10-20T11:00" in the
+// user's time zone; `personal` says whether they come from the user's own posts.
+export type ComposerBestTimes = { personal: boolean; times: { label: string; local: string }[] };
+
 const platformInfo = (id: PlatformId) => PLATFORMS.find((p) => p.id === id)!;
 
 // Tomorrow at 9:00 AM in the given time zone, as "2026-10-15T09:00".
@@ -54,6 +58,7 @@ export function Composer({
   initial,
   suggestedDate,
   queue,
+  bestTimes,
 }: {
   userId: string;
   timezone: string;
@@ -61,6 +66,7 @@ export function Composer({
   accounts: SocialAccount[];
   initial: ComposerInitial;
   queue: ComposerQueue;
+  bestTimes: ComposerBestTimes;
 }) {
   const [postId, setPostId] = useState(initial.postId);
   const [selected, setSelected] = useState<string[]>(initial.accountIds);
@@ -495,6 +501,34 @@ export function Composer({
                   {saving && <LoaderCircle className="animate-spin" />}
                   Schedule post
                 </Button>
+                {bestTimes.times.length > 0 && (
+                  <div className="w-full space-y-1.5">
+                    <p className="text-xs text-muted-foreground">
+                      {bestTimes.personal ? "Your best times, from your past posts:" : "Good times to post (general advice until you have more posts):"}
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {bestTimes.times.map((t) => (
+                        <button
+                          key={t.local}
+                          type="button"
+                          onClick={() => {
+                            setMessage(null);
+                            setScheduleAt(t.local);
+                          }}
+                          aria-pressed={scheduleAt === t.local}
+                          className={cn(
+                            "rounded-full border px-3 py-1 text-sm transition-colors",
+                            scheduleAt === t.local
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border bg-card hover:bg-accent hover:text-accent-foreground"
+                          )}
+                        >
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <p className="w-full text-xs text-muted-foreground">
                   Time zone: {timeZoneLabel(timezone)}.{" "}
                   <Link href="/settings" className="font-medium text-primary hover:underline">
