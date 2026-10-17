@@ -9,6 +9,8 @@ import { mediaUrl } from "@/lib/media";
 import type { PlatformId } from "@/lib/platforms";
 import type { MediaItem, YouTubeOptions } from "@/lib/post-rules";
 import { engagementScore, rankBestTimes, type BestTimes } from "@/lib/best-time";
+import type { BioLink, BioPage } from "@/lib/bio";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { QUEUE_HORIZON_DAYS, minuteOf, upcomingSlotTimes, type QueueSlot } from "@/lib/queue";
 import { utcToZonedInput } from "@/lib/timezone";
 import type { PostStatus, Profile, SocialAccount } from "@/lib/types";
@@ -468,6 +470,50 @@ export async function getBestTimeSuggestions(timeZone: string) {
     }),
   };
 }
+
+// The logged-in user's link-in-bio page (null until they first save it) and its links.
+export async function getMyBioPage(): Promise<{ page: BioPage | null; links: BioLink[]; avatarUrl: string | null }> {
+  const supabase = await createClient();
+  const [pageRes, linksRes, profileRes] = await Promise.all([
+    supabase.from("bio_pages").select("handle, title, bio, published").maybeSingle<BioPage>(),
+    supabase.from("bio_links").select("id, title, url").order("position").order("created_at"),
+    supabase.from("profiles").select("avatar_url").maybeSingle(),
+  ]);
+  if (pageRes.error || linksRes.error) {
+    throw new Error(`Couldn't load your link-in-bio page: ${(pageRes.error ?? linksRes.error)!.message}`);
+  }
+  return {
+    page: pageRes.data,
+    links: (linksRes.data ?? []) as BioLink[],
+    avatarUrl: (profileRes.data?.avatar_url as string | null) ?? null,
+  };
+}
+
+// A published link-in-bio page, for anyone (no login). Uses the secret key because
+// visitors have no database access of their own, so it only ever reads published
+// pages, and only the columns the page shows.
+export const getPublicBioPage = cache(async (handle: string) => {
+  const admin = createAdminClient();
+  const { data: page, error } = await admin
+    .from("bio_pages")
+    .select("user_id, title, bio")
+    .eq("handle", handle)
+    .eq("published", true)
+    .maybeSingle();
+  if (error) throw new Error(`Couldn't load this page: ${error.message}`);
+  if (!page) return null;
+
+  const [linksRes, profileRes] = await Promise.all([
+    admin.from("bio_links").select("id, title, url").eq("user_id", page.user_id).order("position").order("created_at"),
+    admin.from("profiles").select("avatar_url").eq("id", page.user_id).maybeSingle(),
+  ]);
+  return {
+    title: page.title as string,
+    bio: page.bio as string,
+    avatarUrl: (profileRes.data?.avatar_url as string | null) ?? null,
+    links: (linksRes.data ?? []) as BioLink[],
+  };
+});
 
 export type AnalyticsData = {
   totals: { views: number; likes: number; comments: number; shares: number; posts: number };
