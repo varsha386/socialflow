@@ -10,18 +10,21 @@ export const metadata: Metadata = { title: "Create post" };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // /create starts a new post; /create?post=<id> reopens a saved draft;
+// /create?from=<id> ("Post again") starts a new post copied from any earlier post;
 // /create?date=YYYY-MM-DD (from the calendar) starts one with Schedule set to that day.
 export default async function CreatePostPage({ searchParams }: PageProps<"/create">) {
-  const { post, date } = await searchParams;
+  const { post, from, date } = await searchParams;
   const suggestedDate = typeof date === "string" && isValidDate(date) ? date : undefined;
   const postId = typeof post === "string" && UUID.test(post) ? post : null;
+  const fromId = !postId && typeof from === "string" && UUID.test(from) ? from : null;
 
-  const [user, allAccounts, draft] = await Promise.all([
+  const [user, allAccounts, draft, original] = await Promise.all([
     getCurrentUser(),
     getSocialAccounts(),
     postId ? getDraft(postId) : null,
+    fromId ? getDraft(fromId) : null,
   ]);
-  if (postId && !draft) notFound();
+  if ((postId && !draft) || (fromId && !original)) notFound();
 
   const accounts = allAccounts.filter((a) => a.status === "connected");
   const initial: ComposerInitial = draft
@@ -33,25 +36,41 @@ export default async function CreatePostPage({ searchParams }: PageProps<"/creat
         customCaptions: draft.customCaptions,
         youtube: draft.youtube,
       }
-    : {
-        postId: null,
-        caption: "",
-        media: [],
-        // New posts start with every connected account chosen.
-        accountIds: accounts.map((a) => a.id),
-        customCaptions: {},
-        youtube: { title: "", privacy: "public" },
-      };
+    : original
+      ? {
+          // No postId: saving creates a new post and leaves the original untouched.
+          // The media files are shared with the original, not uploaded again.
+          postId: null,
+          caption: original.caption,
+          media: original.media,
+          // Skip accounts that were disconnected since, or need reconnecting.
+          accountIds: original.accountIds.filter((id) => accounts.some((a) => a.id === id)),
+          customCaptions: original.customCaptions,
+          youtube: original.youtube,
+        }
+      : {
+          postId: null,
+          caption: "",
+          media: [],
+          // New posts start with every connected account chosen.
+          accountIds: accounts.map((a) => a.id),
+          customCaptions: {},
+          youtube: { title: "", privacy: "public" },
+        };
 
   return (
     <>
       <PageHeader
-        title={draft ? "Edit draft" : "Create post"}
-        description="Write once, then publish or schedule it everywhere."
+        title={draft ? "Edit draft" : original ? "Post again" : "Create post"}
+        description={
+          original
+            ? "A copy of your earlier post. Change anything you like, then publish or schedule it as a new post."
+            : "Write once, then publish or schedule it everywhere."
+        }
       />
-      {/* key: start fresh when switching between drafts */}
+      {/* key: start fresh when switching between drafts or copies */}
       <Composer
-        key={initial.postId ?? "new"}
+        key={initial.postId ?? (fromId ? `copy-${fromId}` : "new")}
         userId={user.id}
         timezone={user.timezone}
         accounts={accounts}

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, CircleCheck, CircleX, Clock, ExternalLink, LoaderCircle, Pencil, Play } from "lucide-react";
+import { ArrowLeft, CircleCheck, CircleX, Clock, Copy, ExternalLink, LoaderCircle, Pencil, Play } from "lucide-react";
 import { PlatformBadge } from "@/components/platform-badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -56,14 +56,21 @@ export default async function PostDetailPage({ params }: PageProps<"/posts/[id]"
                 : `Last edited ${format(post.updatedAt)}`}
           </p>
         </div>
-        {post.status === "scheduled" && <ScheduledActions postId={post.id} />}
-        {post.status === "draft" && (
-          <Link href={`/create?post=${post.id}`} className={buttonVariants({ size: "lg" })}>
-            <Pencil />
-            Edit draft
+        <div className="flex flex-wrap items-center gap-3">
+          {post.status === "scheduled" && <ScheduledActions postId={post.id} />}
+          {post.status === "draft" && (
+            <Link href={`/create?post=${post.id}`} className={buttonVariants({ size: "lg" })}>
+              <Pencil />
+              Edit draft
+            </Link>
+          )}
+          {canRetry && <RetryButton postId={post.id} />}
+          {/* A new post copied from this one; this post stays as it is. */}
+          <Link href={`/create?from=${post.id}`} className={buttonVariants({ size: "lg", variant: "outline" })}>
+            <Copy />
+            {post.status === "draft" ? "Duplicate" : "Post again"}
           </Link>
-        )}
-        {canRetry && <RetryButton postId={post.id} />}
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
