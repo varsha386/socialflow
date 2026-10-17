@@ -3,8 +3,8 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CalendarClock, CircleCheck, LoaderCircle, Send, TriangleAlert } from "lucide-react";
-import { saveDraft, schedulePost } from "@/app/(app)/create/actions";
+import { CalendarClock, CircleCheck, ListPlus, LoaderCircle, Send, TriangleAlert } from "lucide-react";
+import { addToQueue, saveDraft, schedulePost } from "@/app/(app)/create/actions";
 import { CaptionEditor } from "@/components/composer/caption-editor";
 import { MediaUploader } from "@/components/composer/media-uploader";
 import { PostPreview } from "@/components/composer/post-preview";
@@ -35,6 +35,10 @@ export type ComposerInitial = {
   youtube: YouTubeOptions;
 };
 
+// The posting queue, for the "Add to queue" button. `next` is the next free
+// time, already written out in the user's time zone (e.g. "Mon 20 Oct, 9:00 AM").
+export type ComposerQueue = { hasTimes: boolean; next: string | null };
+
 const platformInfo = (id: PlatformId) => PLATFORMS.find((p) => p.id === id)!;
 
 // Tomorrow at 9:00 AM in the given time zone, as "2026-10-15T09:00".
@@ -49,12 +53,14 @@ export function Composer({
   accounts,
   initial,
   suggestedDate,
+  queue,
 }: {
   userId: string;
   timezone: string;
   suggestedDate?: string; // "YYYY-MM-DD" from the calendar: start with Schedule open for that day
   accounts: SocialAccount[];
   initial: ComposerInitial;
+  queue: ComposerQueue;
 }) {
   const [postId, setPostId] = useState(initial.postId);
   const [selected, setSelected] = useState<string[]>(initial.accountIds);
@@ -149,6 +155,20 @@ export function Composer({
       const id = await save();
       if (!id) return;
       const result = await schedulePost(id, scheduleAt);
+      if (result.error) {
+        setMessage({ ok: false, text: result.error });
+        return;
+      }
+      router.push(`/posts/${id}`);
+    });
+  }
+
+  function handleQueue() {
+    if (!readyToSend()) return;
+    startSaving(async () => {
+      const id = await save();
+      if (!id) return;
+      const result = await addToQueue(id);
       if (result.error) {
         setMessage({ ok: false, text: result.error });
         return;
@@ -408,6 +428,28 @@ export function Composer({
                 <CalendarClock />
                 Schedule
               </Button>
+              {queue.hasTimes ? (
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="h-11 px-6"
+                  onClick={handleQueue}
+                  disabled={saving || !queue.next}
+                  title={queue.next ? `Schedules it for ${queue.next}` : "Your queue is full. Add more posting times."}
+                >
+                  <ListPlus />
+                  Add to queue
+                </Button>
+              ) : (
+                <Link
+                  href="/queue"
+                  className={buttonVariants({ size: "lg", variant: "outline", className: "h-11 px-6" })}
+                  title="Pick the times you like to post, then add posts to the queue"
+                >
+                  <ListPlus />
+                  Set up queue
+                </Link>
+              )}
               <Button size="lg" variant="ghost" className="h-11 px-5" onClick={handleSave} disabled={saving}>
                 {saving && !publishing && !showSchedule && <LoaderCircle className="animate-spin" />}
                 Save draft
@@ -418,6 +460,20 @@ export function Composer({
                 </span>
               )}
             </div>
+            {queue.hasTimes && (
+              <p className="text-xs text-muted-foreground">
+                {queue.next ? (
+                  <>
+                    Next free queue time: <span className="font-medium text-foreground">{queue.next}</span>.{" "}
+                  </>
+                ) : (
+                  <>Your queue is full for the next 8 weeks. </>
+                )}
+                <Link href="/queue" className="font-medium text-primary hover:underline">
+                  Edit queue
+                </Link>
+              </p>
+            )}
 
             {showSchedule && <TimezoneWarning timezone={timezone} />}
             {showSchedule && (
