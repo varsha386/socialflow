@@ -40,6 +40,13 @@ export const getCurrentUser = cache(async () => {
   };
 });
 
+// The caption to show for a post: its main caption, or, if it only has captions
+// typed on a platform's tab (e.g. just "Facebook"), the first of those.
+function displayCaption(caption: string, targets: { custom_caption: string | null }[]) {
+  if (caption.trim()) return caption;
+  return targets.find((t) => t.custom_caption?.trim())?.custom_caption ?? "";
+}
+
 export async function getSocialAccounts(): Promise<SocialAccount[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -182,7 +189,7 @@ export async function getPosts(): Promise<PostListItem[]> {
     .select(
       `id, caption, status, scheduled_at, published_at, updated_at,
        post_media ( position, media ( storage_path, mime_type ) ),
-       post_targets ( social_accounts ( platform ) )`
+       post_targets ( custom_caption, social_accounts ( platform ) )`
     )
     .order("updated_at", { ascending: false })
     .limit(100);
@@ -196,7 +203,7 @@ export async function getPosts(): Promise<PostListItem[]> {
     published_at: string | null;
     updated_at: string;
     post_media: { position: number; media: { storage_path: string; mime_type: string } | null }[];
-    post_targets: { social_accounts: { platform: PlatformId } | null }[];
+    post_targets: { custom_caption: string | null; social_accounts: { platform: PlatformId } | null }[];
   };
 
   return (data as unknown as Row[]).map((p) => {
@@ -204,7 +211,7 @@ export async function getPosts(): Promise<PostListItem[]> {
     const platforms = new Set(p.post_targets.map((t) => t.social_accounts?.platform).filter(Boolean));
     return {
       id: p.id,
-      caption: p.caption,
+      caption: displayCaption(p.caption, p.post_targets),
       status: p.status,
       scheduledAt: p.scheduled_at,
       publishedAt: p.published_at,
@@ -237,7 +244,7 @@ export async function getPostDetail(postId: string) {
     .select(
       `id, caption, status, scheduled_at, published_at, updated_at,
        post_media ( position, media ( storage_path, mime_type ) ),
-       post_targets ( id, status, external_url, error_message, published_at,
+       post_targets ( id, status, custom_caption, external_url, error_message, published_at,
          social_accounts ( platform, display_name, username, avatar_url ) )`
     )
     .eq("id", postId)
@@ -256,6 +263,7 @@ export async function getPostDetail(postId: string) {
     post_targets: {
       id: string;
       status: PostTargetDetail["status"];
+      custom_caption: string | null;
       external_url: string | null;
       error_message: string | null;
       published_at: string | null;
@@ -271,7 +279,7 @@ export async function getPostDetail(postId: string) {
 
   return {
     id: p.id,
-    caption: p.caption,
+    caption: displayCaption(p.caption, p.post_targets),
     status: p.status,
     scheduledAt: p.scheduled_at,
     publishedAt: p.published_at,
@@ -315,7 +323,7 @@ export async function getCalendarPosts(fromIso: string, toIso: string, timeZone:
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("posts")
-    .select("id, status, caption, scheduled_at, published_at, post_targets ( social_accounts ( platform ) )")
+    .select("id, status, caption, scheduled_at, published_at, post_targets ( custom_caption, social_accounts ( platform ) )")
     .neq("status", "draft")
     .or(
       `and(scheduled_at.gte.${fromIso},scheduled_at.lt.${toIso}),and(published_at.gte.${fromIso},published_at.lt.${toIso})`
@@ -329,7 +337,7 @@ export async function getCalendarPosts(fromIso: string, toIso: string, timeZone:
     caption: string;
     scheduled_at: string | null;
     published_at: string | null;
-    post_targets: { social_accounts: { platform: PlatformId } | null }[];
+    post_targets: { custom_caption: string | null; social_accounts: { platform: PlatformId } | null }[];
   };
 
   return (data as unknown as Row[])
@@ -341,7 +349,7 @@ export async function getCalendarPosts(fromIso: string, toIso: string, timeZone:
       return {
         id: p.id,
         status: p.status,
-        caption: p.caption,
+        caption: displayCaption(p.caption, p.post_targets),
         platforms: [...platforms] as PlatformId[],
         at,
         localDate: local.slice(0, 10),

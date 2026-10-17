@@ -28,16 +28,21 @@ export async function saveDraft(input: DraftInput): Promise<SaveResult> {
   } = await supabase.auth.getUser();
   if (!user) return { error: "Your session expired. Log in again." };
 
-  if (!input.caption.trim() && input.mediaIds.length === 0) {
-    return { error: "Write something or add a photo or video first." };
-  }
-
   // Look up each account's platform ourselves rather than trusting the browser.
   const { data: accounts, error: accountsError } = await supabase
     .from("social_accounts")
     .select("id, platform")
     .in("id", input.accountIds.length ? input.accountIds : ["00000000-0000-0000-0000-000000000000"]);
   if (accountsError) return { error: "Couldn't check your accounts. Try again." };
+
+  // A caption typed only on a platform's tab (e.g. just "Facebook") counts too,
+  // as long as that platform is one of the chosen accounts.
+  const hasCaption =
+    input.caption.trim() !== "" ||
+    accounts.some((a) => input.customCaptions[a.platform as PlatformId]?.trim());
+  if (!hasCaption && input.mediaIds.length === 0) {
+    return { error: "Write something or add a photo or video first." };
+  }
 
   // 1. The post itself.
   let postId = input.postId;
