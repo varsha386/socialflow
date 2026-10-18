@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CalendarClock, CircleCheck, ListPlus, LoaderCircle, Send, TriangleAlert } from "lucide-react";
 import { addToQueue, saveDraft, schedulePost } from "@/app/(app)/create/actions";
+import { AiCaptionWriter } from "@/components/composer/ai-caption-writer";
 import { CaptionEditor } from "@/components/composer/caption-editor";
 import { MediaUploader } from "@/components/composer/media-uploader";
 import { PostPreview } from "@/components/composer/post-preview";
@@ -357,6 +358,17 @@ export function Composer({
                 </p>
               </>
             )}
+
+            <AiCaptionWriter
+              platforms={activeTab === "all" ? platforms : [activeTab]}
+              currentCaption={activeTab === "all" ? caption : captionFor(activeTab)}
+              target={activeTab === "all" ? "the main caption" : `the ${platformInfo(activeTab).name} caption`}
+              onUse={(text) => {
+                setMessage(null);
+                if (activeTab === "all") setCaption(text);
+                else setCustomCaptions((c) => ({ ...c, [activeTab]: text }));
+              }}
+            />
 
             {activeTab === "youtube" || (activeTab === "all" && platforms.includes("youtube")) ? (
               <div className="grid gap-3 rounded-2xl bg-muted p-4 sm:grid-cols-[1fr_auto]">
