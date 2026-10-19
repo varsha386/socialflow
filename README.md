@@ -26,6 +26,7 @@
 | **Bulk upload** | Turn up to 30 files into separate posts, spaced every N hours or days |
 | **Analytics** | Likes, comments, shares, YouTube views and follower growth, collected every 6 hours |
 | **Inbox** | Comments from all three platforms in one place, with replies sent as your Page, account or channel |
+| **Email alerts** | Emails when a scheduled post fails (on by default), when an account needs reconnecting (once, on by default) and when a scheduled post goes out (off by default), chosen in Settings. Sent with Resend (`RESEND_API_KEY`); without a key they're printed in the dev server window |
 | **AI caption writer** | "Write with AI" on Create: describe the post, pick a tone and hashtags, and get three captions to choose from (Claude Opus 5.5, structured JSON output). Works for the main caption or one platform's tab. Needs `ANTHROPIC_API_KEY` |
 | **Link in bio** | A public page at `/u/<name>` with your title, bio and link buttons, to share in your social bios. Edit it with a live preview, reorder links, and publish or hide it. Only published pages are public, and links must be http(s) |
 | **Best time to post** | Suggests the weekday and hour when your posts got the most engagement (last 90 days; comments count double, shares triple), or general good times until 5 posts have numbers. Shown on Analytics, as one-click times in Create's Schedule panel, and as suggested Queue times |

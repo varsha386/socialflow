@@ -4,7 +4,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { getCurrentUser } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import { timeZoneLabel } from "@/lib/timezone";
+import { DEFAULT_EMAIL_ALERTS, EMAIL_ALERTS, type EmailAlertSettings } from "@/lib/email/alert-options";
 import { AppearanceCard } from "./appearance-card";
+import { EmailAlertsCard } from "./email-alerts-card";
 import { ProfileForm } from "./profile-form";
 import { TwoStepCard } from "./two-step-card";
 
@@ -13,7 +15,11 @@ export const metadata: Metadata = { title: "Settings" };
 export default async function SettingsPage() {
   const user = await getCurrentUser();
   const supabase = await createClient();
-  const { data: factors } = await supabase.auth.mfa.listFactors();
+  const [{ data: factors }, { data: alerts }] = await Promise.all([
+    supabase.auth.mfa.listFactors(),
+    supabase.from("profiles").select(EMAIL_ALERTS.map((a) => a.key).join(", ")).eq("id", user.id).maybeSingle(),
+  ]);
+  const emailAlerts: EmailAlertSettings = { ...DEFAULT_EMAIL_ALERTS, ...(alerts as Partial<EmailAlertSettings> | null) };
   const twoStepOn = (factors?.totp ?? []).some((f) => f.status === "verified");
   // Sorted by the name people see (e.g. Asia/Calcutta is shown and sorted as Asia/Kolkata).
   const known = Intl.supportedValuesOf("timeZone")
@@ -43,6 +49,10 @@ export default async function SettingsPage() {
 
       <div className="mt-6">
         <AppearanceCard />
+      </div>
+
+      <div className="mt-6">
+        <EmailAlertsCard email={user.email} initial={emailAlerts} />
       </div>
 
       <div className="mt-6">

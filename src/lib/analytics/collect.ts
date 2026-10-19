@@ -1,4 +1,5 @@
 import "server-only";
+import { markNeedsReconnecting } from "@/lib/email/alerts";
 import type { PlatformId } from "@/lib/platforms";
 import { graph } from "@/lib/publishing/graph";
 import { getAccessToken } from "@/lib/publishing/tokens";
@@ -83,7 +84,7 @@ export async function refreshUserMetrics(userId: string) {
 
 async function handleError(admin: ReturnType<typeof createAdminClient>, account: Account, err: unknown) {
   if (err instanceof PublishError && err.reconnect) {
-    await admin.from("social_accounts").update({ status: "expired" }).eq("id", account.id);
+    await markNeedsReconnecting(admin, account.id);
   } else {
     console.error(`[analytics] ${account.platform} ${account.id}:`, err);
   }

@@ -1,4 +1,5 @@
 import "server-only";
+import { markNeedsReconnecting } from "@/lib/email/alerts";
 import type { PlatformId } from "@/lib/platforms";
 import { graph } from "@/lib/publishing/graph";
 import { getAccessToken } from "@/lib/publishing/tokens";
@@ -85,7 +86,7 @@ export async function syncUserComments(userId: string) {
 
 async function handleError(admin: Admin, account: Account, err: unknown) {
   if (err instanceof PublishError && err.reconnect) {
-    await admin.from("social_accounts").update({ status: "expired" }).eq("id", account.id);
+    await markNeedsReconnecting(admin, account.id);
   } else {
     console.error(`[inbox] ${account.platform} ${account.id}:`, err);
   }
@@ -254,7 +255,7 @@ export async function replyToComment(userId: string, commentId: string, message:
     return {};
   } catch (err) {
     if (err instanceof PublishError) {
-      if (err.reconnect) await admin.from("social_accounts").update({ status: "expired" }).eq("id", account.id);
+      if (err.reconnect) await markNeedsReconnecting(admin, account.id);
       return { error: err.message };
     }
     console.error("[inbox] reply failed:", err);
