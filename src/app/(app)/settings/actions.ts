@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { EMAIL_ALERTS, type EmailAlert } from "@/lib/email/alert-options";
 import { createClient } from "@/lib/supabase/server";
 
 // True for any time zone name this system knows, including older aliases
@@ -43,6 +44,21 @@ export async function updateProfile(
   // Refresh the sidebar and dashboard so they show the new name.
   revalidatePath("/", "layout");
   return { saved: true };
+}
+
+// Turns one kind of email alert on or off.
+export async function setEmailAlert(alert: EmailAlert, on: boolean): Promise<{ error?: string }> {
+  if (!EMAIL_ALERTS.some((a) => a.key === alert)) return { error: "Unknown email alert." };
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Your session expired. Log in again." };
+
+  const { error } = await supabase.from("profiles").update({ [alert]: on }).eq("id", user.id);
+  if (error) return { error: "Couldn't save that. Try again." };
+  revalidatePath("/settings");
+  return {};
 }
 
 // Sets just the time zone (used by the "Use my time zone" buttons outside Settings).

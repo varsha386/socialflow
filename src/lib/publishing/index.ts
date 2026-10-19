@@ -1,4 +1,5 @@
 import "server-only";
+import { markNeedsReconnecting } from "@/lib/email/alerts";
 import { mediaUrl } from "@/lib/media";
 import type { PlatformId } from "@/lib/platforms";
 import { checkPost, type MediaItem, type YouTubeOptions } from "@/lib/post-rules";
@@ -175,7 +176,7 @@ export async function publishPost(postId: string, userId: string): Promise<Publi
           })
           .eq("id", t.id);
         if (known && err.reconnect) {
-          await admin.from("social_accounts").update({ status: "expired" }).eq("id", account.id);
+          await markNeedsReconnecting(admin, account.id);
         }
       }
     })
