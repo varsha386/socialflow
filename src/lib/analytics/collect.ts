@@ -147,7 +147,7 @@ async function fetchPostMetrics(account: Account, token: string, targets: Target
       out.set(
         target.id,
         account.platform === "facebook"
-          ? await facebookPostMetrics(target.external_post_id, token)
+          ? await facebookPostMetrics(target.external_post_id, account.platform_account_id, token)
           : await instagramPostMetrics(target.external_post_id, token)
       );
     } catch (err) {
@@ -160,7 +160,25 @@ async function fetchPostMetrics(account: Account, token: string, targets: Target
 
 type Summary = { summary?: { total_count?: number } };
 
-async function facebookPostMetrics(id: string, token: string): Promise<Metrics> {
+type InsightsResponse = { data?: { name: string; values?: { value?: number }[]; total_value?: { value?: number } }[] };
+
+// One insight number for a post, or null if it isn't available. Views need an extra
+// permission (read_insights / instagram_manage_insights) that older connections don't
+// have yet, and graph() reports a missing permission as "reconnect". That must not
+// mark the account as broken, so every error here just means "no views".
+async function insight(objectId: string, metric: string, token: string): Promise<number | null> {
+  try {
+    const res = await graph<InsightsResponse>("GET", `/${objectId}/insights`, { metric }, token);
+    const entry = res.data?.find((d) => d.name === metric) ?? res.data?.[0];
+    return num(entry?.values?.[0]?.value ?? entry?.total_value?.value);
+  } catch {
+    return null;
+  }
+}
+
+// Docs: https://developers.facebook.com/docs/graph-api/reference/insights (post_media_view:
+// "the number of times your content was played or displayed").
+async function facebookPostMetrics(id: string, pageId: string, token: string): Promise<Metrics> {
   try {
     const post = await graph<{ reactions?: Summary; comments?: Summary; shares?: { count?: number } }>(
       "GET",
@@ -169,7 +187,7 @@ async function facebookPostMetrics(id: string, token: string): Promise<Metrics> 
       token
     );
     return {
-      views: null,
+      views: await insight(id, "post_media_view", token),
       likes: num(post.reactions?.summary?.total_count),
       comments: num(post.comments?.summary?.total_count),
       shares: num(post.shares?.count ?? 0),
@@ -184,7 +202,8 @@ async function facebookPostMetrics(id: string, token: string): Promise<Metrics> 
       token
     );
     return {
-      views: null,
+      // A Page video's post is usually "<page id>_<video id>"; if not, views stay empty.
+      views: await insight(`${pageId}_${id}`, "post_media_view", token),
       likes: num(video.likes?.summary?.total_count),
       comments: num(video.comments?.summary?.total_count),
       shares: null,
@@ -192,6 +211,8 @@ async function facebookPostMetrics(id: string, token: string): Promise<Metrics> 
   }
 }
 
+// Docs: https://developers.facebook.com/docs/instagram-platform/reference/instagram-media/insights
+// (`views` works for feed posts and Reels; carousels have no insights, so they stay empty).
 async function instagramPostMetrics(id: string, token: string): Promise<Metrics> {
   const media = await graph<{ like_count?: number; comments_count?: number }>(
     "GET",
@@ -199,7 +220,12 @@ async function instagramPostMetrics(id: string, token: string): Promise<Metrics>
     { fields: "like_count,comments_count" },
     token
   );
-  return { views: null, likes: num(media.like_count), comments: num(media.comments_count), shares: null };
+  return {
+    views: await insight(id, "views", token),
+    likes: num(media.like_count),
+    comments: num(media.comments_count),
+    shares: null,
+  };
 }
 
 type YouTubeList = {

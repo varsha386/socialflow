@@ -19,6 +19,8 @@ const SCOPES = [
   "pages_read_user_content", // read comments on Page posts (Inbox)
   "pages_manage_engagement", // reply to comments as the Page (Inbox)
   "instagram_manage_comments", // read and reply to Instagram comments (Inbox)
+  "read_insights", // Facebook post views (Analytics)
+  "instagram_manage_insights", // Instagram post and Reel views (Analytics)
 ];
 
 type GraphError = { error?: { message: string } };
