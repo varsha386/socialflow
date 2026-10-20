@@ -26,6 +26,7 @@
 | **Bulk upload** | Turn up to 30 files into separate posts, spaced every N hours or days |
 | **Analytics** | Likes, comments, shares, YouTube views and follower growth, collected every 6 hours |
 | **Inbox** | Comments from all three platforms in one place, with replies sent as your Page, account or channel |
+| **Free and Pro plans** | Free: 3 connected accounts, 30 scheduled posts and 10 AI captions a month. Pro ($9/month): unlimited, plus best times and top posts in Analytics and priority support. The Plan page shows usage. Limits are checked on the server; reconnecting never counts. Pro is switched on by hand for now (SQL in the migration) |
 | **Views for Instagram and Facebook** | Analytics collects views for Instagram posts and Reels (`views` insight) and Facebook posts (`post_media_view`), next to YouTube views. Needs the `instagram_manage_insights` and `read_insights` permissions (reconnect once); if they're missing, views are simply left empty and the account is never marked broken |
 | **Instagram Stories** | On Create, choose "Feed post" or "Story" for Instagram. A Story is one photo or video (videos up to 60 seconds) with no caption, previewed in a 9:16 frame. Stories are skipped by analytics and the inbox |
 | **Email alerts** | Emails when a scheduled post fails (on by default), when an account needs reconnecting (once, on by default) and when a scheduled post goes out (off by default), chosen in Settings. Sent with Resend (`RESEND_API_KEY`); without a key they're printed in the dev server window |

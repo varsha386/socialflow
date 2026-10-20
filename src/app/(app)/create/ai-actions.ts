@@ -2,6 +2,7 @@
 
 import { TONES, type Tone } from "@/lib/ai/caption-options";
 import { CaptionError, generateCaptions } from "@/lib/ai/captions";
+import { aiCaptionLimitError, recordAiCaptionUse } from "@/lib/plan-limits";
 import { PLATFORMS, type PlatformId } from "@/lib/platforms";
 import { createClient } from "@/lib/supabase/server";
 
@@ -33,6 +34,10 @@ export async function writeCaptionIdeas(input: {
   const tone: Tone = (TONES as readonly string[]).includes(input.tone) ? (input.tone as Tone) : "friendly";
   const platforms = PLATFORMS.map((p) => p.id).filter((id): id is PlatformId => input.platforms.includes(id));
 
+  // Free plan: a monthly number of AI caption requests.
+  const overLimit = await aiCaptionLimitError(user.id);
+  if (overLimit) return { error: overLimit };
+
   try {
     const captions = await generateCaptions({
       description,
@@ -41,6 +46,7 @@ export async function writeCaptionIdeas(input: {
       platforms,
       currentCaption: input.currentCaption.slice(0, 5000),
     });
+    await recordAiCaptionUse(user.id); // only successful requests count
     return { captions };
   } catch (err) {
     if (err instanceof CaptionError) return { error: err.message };

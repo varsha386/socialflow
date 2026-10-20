@@ -1,5 +1,6 @@
 import {
   CalendarDays,
+  Crown,
   Inbox,
   ChartColumn,
   LayoutDashboard,
@@ -30,5 +31,6 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/connections", label: "Connections", icon: Plug },
   { href: "/bio", label: "Link in bio", icon: Link2 },
   { href: "/analytics", label: "Analytics", icon: ChartColumn },
+  { href: "/plan", label: "Plan", icon: Crown },
   { href: "/settings", label: "Settings", icon: Settings },
 ];

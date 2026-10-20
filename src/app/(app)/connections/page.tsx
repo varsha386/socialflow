@@ -7,6 +7,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getSocialAccounts } from "@/lib/data";
 import { PLATFORMS, type ProviderId } from "@/lib/platforms";
+import { FREE_LIMITS } from "@/lib/plans";
 import { DisconnectButton } from "./disconnect-button";
 
 export const metadata: Metadata = { title: "Connections" };
@@ -23,10 +24,14 @@ function resultMessage(params: Record<string, string | string[] | undefined>) {
 
   if (params.connected) {
     const count = Number(params.count ?? 1);
-    if (provider === "youtube") return { ok: true, text: "Your YouTube channel is connected." };
+    const skipped = Number(params.skipped ?? 0);
+    const limitNote = skipped
+      ? ` ${skipped} more ${skipped === 1 ? "wasn't" : "weren't"} added, because the Free plan includes ${FREE_LIMITS.accounts} accounts. Upgrade to Pro on the Plan page for unlimited.`
+      : "";
+    if (provider === "youtube") return { ok: true, text: `Your YouTube channel is connected.${limitNote}` };
     return {
       ok: true,
-      text: `Connected ${count} ${count === 1 ? "account" : "accounts"} from Facebook and Instagram.`,
+      text: `Connected ${count} ${count === 1 ? "account" : "accounts"} from Facebook and Instagram.${limitNote}`,
     };
   }
 
@@ -43,6 +48,11 @@ function resultMessage(params: Record<string, string | string[] | undefined>) {
       return {
         ok: false,
         text: "No YouTube channel was found on the account you picked. If your channel uses a Brand Account, choose the channel's name (not your own) when Google asks. Otherwise, create a channel on youtube.com first.",
+      };
+    case "plan_limit":
+      return {
+        ok: false,
+        text: `The Free plan includes ${FREE_LIMITS.accounts} connected accounts, and you've reached it. Upgrade to Pro on the Plan page to connect more.`,
       };
     case "no_pages":
       return { ok: false, text: "No Facebook Pages were found. When Facebook asks, make sure you select your Page (and its Instagram account)." };
