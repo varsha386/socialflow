@@ -1,4 +1,4 @@
-import type { MediaItem, YouTubeOptions } from "@/lib/post-rules";
+import type { InstagramOptions, MediaItem, YouTubeOptions } from "@/lib/post-rules";
 
 // Everything a platform publisher needs to send one post to one account.
 export type PublishJob = {
@@ -7,6 +7,7 @@ export type PublishJob = {
   caption: string;
   media: MediaItem[];
   youtube: YouTubeOptions;
+  instagram: InstagramOptions;
 };
 
 export type PublishResult = {

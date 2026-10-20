@@ -39,15 +39,17 @@ export async function syncUserComments(userId: string) {
     .eq("status", "connected");
 
   for (const account of (accounts ?? []) as Account[]) {
-    const { data: targets } = await admin
+    const { data: rows } = await admin
       .from("post_targets")
-      .select("id, external_post_id")
+      .select("id, external_post_id, options")
       .eq("social_account_id", account.id)
       .eq("status", "published")
       .not("external_post_id", "is", null)
       .gte("published_at", since)
       .limit(50);
-    if (!targets?.length) continue;
+    // Instagram Stories can't have comments.
+    const targets = (rows ?? []).filter((t) => (t.options as { format?: string } | null)?.format !== "story");
+    if (!targets.length) continue;
 
     let token: string;
     try {

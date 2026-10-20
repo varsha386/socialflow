@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Composer, type ComposerInitial } from "@/components/composer/composer";
 import { PageHeader } from "@/components/page-header";
 import { isValidDate } from "@/lib/calendar";
+import { DEFAULT_INSTAGRAM } from "@/lib/post-rules";
 import {
   getBestTimeSuggestions,
   getCurrentUser,
@@ -56,6 +57,7 @@ export default async function CreatePostPage({ searchParams }: PageProps<"/creat
         accountIds: draft.accountIds,
         customCaptions: draft.customCaptions,
         youtube: draft.youtube,
+        instagram: draft.instagram,
       }
     : original
       ? {
@@ -68,6 +70,7 @@ export default async function CreatePostPage({ searchParams }: PageProps<"/creat
           accountIds: original.accountIds.filter((id) => accounts.some((a) => a.id === id)),
           customCaptions: original.customCaptions,
           youtube: original.youtube,
+          instagram: original.instagram,
         }
       : {
           postId: null,
@@ -77,6 +80,7 @@ export default async function CreatePostPage({ searchParams }: PageProps<"/creat
           accountIds: accounts.map((a) => a.id),
           customCaptions: {},
           youtube: { title: "", privacy: "public" },
+          instagram: DEFAULT_INSTAGRAM,
         };
 
   return (
