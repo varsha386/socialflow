@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getNextFreeSlot } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import type { PlatformId } from "@/lib/platforms";
-import type { YouTubeOptions } from "@/lib/post-rules";
+import type { InstagramOptions, YouTubeOptions } from "@/lib/post-rules";
 import { checkReadyToPublish } from "@/lib/publishing";
 import { zonedTimeToUtc } from "@/lib/timezone";
 import { POST_SCHEDULED, inngest, type PostScheduledData } from "@/inngest/client";
@@ -16,6 +16,7 @@ export type DraftInput = {
   accountIds: string[];
   customCaptions: Partial<Record<PlatformId, string>>;
   youtube: YouTubeOptions;
+  instagram?: InstagramOptions; // Bulk upload leaves it out: always the feed
 };
 
 export type SaveResult = { postId?: string; error?: string };
@@ -90,7 +91,9 @@ export async function saveDraft(input: DraftInput): Promise<SaveResult> {
           options:
             platform === "youtube"
               ? { title: input.youtube.title.trim(), privacy: input.youtube.privacy }
-              : {},
+              : platform === "instagram" && input.instagram?.format === "story"
+                ? { format: "story" }
+                : {},
         };
       })
     );

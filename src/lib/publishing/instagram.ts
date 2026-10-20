@@ -11,7 +11,11 @@ export async function publishToInstagram(job: PublishJob): Promise<PublishResult
   const { platformAccountId: igUserId, accessToken: token, caption, media } = job;
   let containerId: string;
 
-  if (media.length === 1) {
+  if (job.instagram.format === "story") {
+    // A Story is one photo or video, with no caption.
+    const item = media[0];
+    containerId = await createContainer(igUserId, token, item, { media_type: "STORIES" });
+  } else if (media.length === 1) {
     containerId = await createContainer(igUserId, token, media[0], { caption });
   } else {
     // Carousel: one container per item, then a parent container holding them.
@@ -57,6 +61,7 @@ async function createContainer(
   const params: Record<string, string> =
     item.kind === "video"
       ? // A single video becomes a Reel; inside a carousel it's a plain video.
+        // (`extra` can override media_type, e.g. STORIES.)
         { media_type: extra.is_carousel_item ? "VIDEO" : "REELS", video_url: item.url, ...extra }
       : { image_url: item.url, ...extra };
   const { id } = await graph<{ id: string }>("POST", `/${igUserId}/media`, params, token);

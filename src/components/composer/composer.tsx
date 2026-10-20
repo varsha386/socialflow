@@ -19,8 +19,10 @@ import { cn } from "@/lib/utils";
 import { PLATFORMS, type PlatformId } from "@/lib/platforms";
 import {
   CAPTION_LIMITS,
+  INSTAGRAM_STORY_MAX_SECONDS,
   YOUTUBE_TITLE_LIMIT,
   checkPost,
+  type InstagramOptions,
   type MediaItem,
   type YouTubeOptions,
 } from "@/lib/post-rules";
@@ -34,6 +36,7 @@ export type ComposerInitial = {
   accountIds: string[];
   customCaptions: Partial<Record<PlatformId, string>>;
   youtube: YouTubeOptions;
+  instagram: InstagramOptions;
 };
 
 // The posting queue, for the "Add to queue" button. `next` is the next free
@@ -75,6 +78,7 @@ export function Composer({
   const [caption, setCaption] = useState(initial.caption);
   const [customCaptions, setCustomCaptions] = useState(initial.customCaptions);
   const [youtube, setYoutube] = useState<YouTubeOptions>(initial.youtube);
+  const [instagram, setInstagram] = useState<InstagramOptions>(initial.instagram);
   const [tab, setTab] = useState<"all" | PlatformId>("all");
   const [previewChoice, setPreviewChoice] = useState<PlatformId | null>(null);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
@@ -95,7 +99,7 @@ export function Composer({
     previewChoice && platforms.includes(previewChoice) ? previewChoice : platforms[0] ?? null;
 
   const captionFor = (p: PlatformId) => customCaptions[p] ?? caption;
-  const checks = platforms.map((p) => ({ platform: p, problems: checkPost(p, captionFor(p), media, youtube) }));
+  const checks = platforms.map((p) => ({ platform: p, problems: checkPost(p, captionFor(p), media, youtube, instagram) }));
 
   function toggleAccount(id: string) {
     setMessage(null);
@@ -114,6 +118,7 @@ export function Composer({
         Object.entries(customCaptions).filter(([p]) => platforms.includes(p as PlatformId))
       ),
       youtube,
+      instagram,
     });
     if (result.postId && result.postId !== postId) {
       setPostId(result.postId);
@@ -404,6 +409,48 @@ export function Composer({
                 </p>
               </div>
             ) : null}
+
+            {activeTab === "instagram" || (activeTab === "all" && platforms.includes("instagram")) ? (
+              <div className="space-y-2 rounded-2xl bg-muted p-4">
+                <p className="text-sm font-medium" id="ig-format-label">
+                  Instagram: post as
+                </p>
+                <div className="flex flex-wrap gap-2" role="radiogroup" aria-labelledby="ig-format-label">
+                  {(
+                    [
+                      { value: "feed", label: "Feed post", hint: "Photo, carousel or Reel, with the caption" },
+                      { value: "story", label: "Story", hint: "One photo or video, shown for 24 hours" },
+                    ] as const
+                  ).map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      role="radio"
+                      aria-checked={instagram.format === option.value}
+                      onClick={() => {
+                        setMessage(null);
+                        setInstagram({ format: option.value });
+                      }}
+                      className={cn(
+                        "flex-1 rounded-xl border px-3 py-2 text-left text-sm transition-colors",
+                        instagram.format === option.value
+                          ? "border-primary bg-card font-medium"
+                          : "border-transparent bg-card/60 text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {option.label}
+                      <span className="block text-xs font-normal text-muted-foreground">{option.hint}</span>
+                    </button>
+                  ))}
+                </div>
+                {instagram.format === "story" && (
+                  <p className="text-xs text-muted-foreground">
+                    Stories don&apos;t show a caption, so Instagram gets only the photo or video. Tall photos and
+                    videos (9:16) fill the screen best. Videos can be up to {INSTAGRAM_STORY_MAX_SECONDS} seconds.
+                  </p>
+                )}
+              </div>
+            ) : null}
           </CardContent>
         </Card>
 
@@ -591,6 +638,7 @@ export function Composer({
             caption={captionFor(previewPlatform)}
             media={media}
             youtube={youtube}
+            instagram={instagram}
           />
         ) : (
           <div className="rounded-2xl border-2 border-dashed px-6 py-16 text-center text-sm text-muted-foreground">

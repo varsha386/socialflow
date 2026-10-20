@@ -52,16 +52,18 @@ export async function refreshUserMetrics(userId: string) {
       summary.errors++;
     }
 
-    // 2. Recent posts on this account.
-    const { data: targets } = await admin
+    // 2. Recent posts on this account. Instagram Stories are skipped: they have
+    //    no likes or comments to collect, and they disappear after 24 hours.
+    const { data: rows } = await admin
       .from("post_targets")
-      .select("id, external_post_id, social_account_id")
+      .select("id, external_post_id, social_account_id, options")
       .eq("social_account_id", account.id)
       .eq("status", "published")
       .not("external_post_id", "is", null)
       .gte("published_at", since)
       .limit(100);
-    if (!targets?.length) continue;
+    const targets = (rows ?? []).filter((t) => (t.options as { format?: string } | null)?.format !== "story");
+    if (!targets.length) continue;
 
     try {
       const metrics = await fetchPostMetrics(account, token, targets as Target[]);

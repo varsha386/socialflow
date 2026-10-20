@@ -17,6 +17,12 @@ export type MediaItem = {
 
 export type YouTubeOptions = { title: string; privacy: "public" | "unlisted" | "private" };
 
+// Instagram can post to the feed (a photo, carousel or Reel) or as a Story (one photo
+// or video, shown for 24 hours, no caption).
+export type InstagramOptions = { format: "feed" | "story" };
+export const DEFAULT_INSTAGRAM: InstagramOptions = { format: "feed" };
+export const INSTAGRAM_STORY_MAX_SECONDS = 60;
+
 export const CAPTION_LIMITS: Record<PlatformId, number> = {
   instagram: 2200,
   facebook: 63206,
@@ -36,17 +42,27 @@ export function checkPost(
   platform: PlatformId,
   caption: string,
   media: MediaItem[],
-  youtube: YouTubeOptions
+  youtube: YouTubeOptions,
+  instagram: InstagramOptions = DEFAULT_INSTAGRAM
 ): string[] {
   const problems: string[] = [];
   const videos = media.filter((m) => m.kind === "video");
   const limit = CAPTION_LIMITS[platform];
+  const story = platform === "instagram" && instagram.format === "story";
 
-  if (caption.length > limit) {
+  // Stories don't show a caption, so its length doesn't matter there.
+  if (caption.length > limit && !story) {
     problems.push(`Caption is ${caption.length - limit} characters too long.`);
   }
 
-  if (platform === "instagram") {
+  if (story) {
+    if (media.length !== 1) problems.push("A Story needs exactly one photo or video.");
+    if (media.some((m) => m.mimeType === "image/gif")) problems.push("GIFs aren't supported.");
+    const video = media.find((m) => m.kind === "video");
+    if (video?.durationSeconds && video.durationSeconds > INSTAGRAM_STORY_MAX_SECONDS) {
+      problems.push(`Story videos can be up to ${INSTAGRAM_STORY_MAX_SECONDS} seconds long.`);
+    }
+  } else if (platform === "instagram") {
     if (media.length === 0) problems.push("Add at least one photo or video.");
     if (media.length > INSTAGRAM_MAX_MEDIA) problems.push(`Use ${INSTAGRAM_MAX_MEDIA} files or fewer.`);
     if (countHashtags(caption) > INSTAGRAM_MAX_HASHTAGS) {
