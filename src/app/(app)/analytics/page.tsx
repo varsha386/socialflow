@@ -30,7 +30,7 @@ export default async function AnalyticsPage() {
     { label: "Likes", value: fmt(data.totals.likes) },
     { label: "Comments", value: fmt(data.totals.comments) },
     data.hasViews
-      ? { label: "YouTube views", value: fmt(data.totals.views) }
+      ? { label: "Views", value: fmt(data.totals.views) }
       : { label: "Shares", value: fmt(data.totals.shares) },
   ];
 
@@ -193,7 +193,9 @@ export default async function AnalyticsPage() {
           </Card>
 
           <p className="text-xs text-muted-foreground">
-            Views for Instagram and Facebook need an extra permission from Meta, so only YouTube views are shown for now.
+            Views come from YouTube, Instagram and Facebook. If Instagram or Facebook views show “–”, reconnect
+            them once under Connections → Connect another and allow every permission Facebook asks for. Instagram
+            carousels and Stories don&apos;t report views, and new numbers can take up to 48 hours to appear.
           </p>
         </div>
       )}

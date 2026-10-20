@@ -26,6 +26,7 @@
 | **Bulk upload** | Turn up to 30 files into separate posts, spaced every N hours or days |
 | **Analytics** | Likes, comments, shares, YouTube views and follower growth, collected every 6 hours |
 | **Inbox** | Comments from all three platforms in one place, with replies sent as your Page, account or channel |
+| **Views for Instagram and Facebook** | Analytics collects views for Instagram posts and Reels (`views` insight) and Facebook posts (`post_media_view`), next to YouTube views. Needs the `instagram_manage_insights` and `read_insights` permissions (reconnect once); if they're missing, views are simply left empty and the account is never marked broken |
 | **Instagram Stories** | On Create, choose "Feed post" or "Story" for Instagram. A Story is one photo or video (videos up to 60 seconds) with no caption, previewed in a 9:16 frame. Stories are skipped by analytics and the inbox |
 | **Email alerts** | Emails when a scheduled post fails (on by default), when an account needs reconnecting (once, on by default) and when a scheduled post goes out (off by default), chosen in Settings. Sent with Resend (`RESEND_API_KEY`); without a key they're printed in the dev server window |
 | **AI caption writer** | "Write with AI" on Create: describe the post, pick a tone and hashtags, and get three captions to choose from (Claude Opus 5.5, structured JSON output). Works for the main caption or one platform's tab. Needs `ANTHROPIC_API_KEY` |
