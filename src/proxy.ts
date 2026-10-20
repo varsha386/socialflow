@@ -14,6 +14,7 @@ const PROTECTED = [
   "/bio",
   "/analytics",
   "/settings",
+  "/plan",
   "/reset-password",
 ];
 

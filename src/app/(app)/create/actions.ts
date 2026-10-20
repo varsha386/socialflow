@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getNextFreeSlot } from "@/lib/data";
+import { scheduleLimitError } from "@/lib/plan-limits";
 import { createClient } from "@/lib/supabase/server";
 import type { PlatformId } from "@/lib/platforms";
 import type { InstagramOptions, YouTubeOptions } from "@/lib/post-rules";
@@ -153,6 +154,10 @@ async function scheduleAt(postId: string, userId: string, when: Date): Promise<S
   const supabase = await createClient();
   if (when.getTime() < Date.now() + 2 * 60 * 1000) return { error: "Choose a time at least 2 minutes from now." };
   if (when.getTime() > Date.now() + 365 * 24 * 60 * 60 * 1000) return { error: "Choose a time within the next year." };
+
+  // Free plan: a monthly number of scheduled posts.
+  const overLimit = await scheduleLimitError(userId, postId, when);
+  if (overLimit) return { error: overLimit };
 
   // Run the same checks as "Publish now", so problems show up today, not at 7 PM.
   const problem = await checkReadyToPublish(postId, userId);
