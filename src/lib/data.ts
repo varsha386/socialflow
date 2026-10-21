@@ -7,7 +7,11 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { mediaUrl } from "@/lib/media";
 import type { PlatformId } from "@/lib/platforms";
-import type { MediaItem, YouTubeOptions } from "@/lib/post-rules";
+import { DEFAULT_INSTAGRAM, type InstagramOptions, type MediaItem, type YouTubeOptions } from "@/lib/post-rules";
+import { engagementScore, rankBestTimes, type BestTimes } from "@/lib/best-time";
+import type { BioLink, BioPage } from "@/lib/bio";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { QUEUE_HORIZON_DAYS, minuteOf, upcomingSlotTimes, type QueueSlot } from "@/lib/queue";
 import { utcToZonedInput } from "@/lib/timezone";
 import type { PostStatus, Profile, SocialAccount } from "@/lib/types";
 
@@ -141,9 +145,10 @@ export async function getDraft(postId: string) {
       durationSeconds: m!.duration_seconds,
     }));
 
-  // Custom captions and YouTube options are stored per account; the screen works per platform.
+  // Custom captions and YouTube/Instagram options are stored per account; the screen works per platform.
   const customCaptions: Partial<Record<PlatformId, string>> = {};
   let youtube: YouTubeOptions = { title: "", privacy: "public" };
+  let instagram: InstagramOptions = DEFAULT_INSTAGRAM;
   for (const t of post.post_targets) {
     const platform = t.social_accounts?.platform;
     if (!platform) continue;
@@ -154,6 +159,7 @@ export async function getDraft(postId: string) {
         privacy: (t.options.privacy as YouTubeOptions["privacy"]) ?? "public",
       };
     }
+    if (platform === "instagram" && t.options.format === "story") instagram = { format: "story" };
   }
 
   return {
@@ -164,6 +170,7 @@ export async function getDraft(postId: string) {
     accountIds: post.post_targets.map((t) => t.social_account_id),
     customCaptions,
     youtube,
+    instagram,
   };
 }
 
@@ -360,6 +367,156 @@ export async function getCalendarPosts(fromIso: string, toIso: string, timeZone:
     .filter((p) => Date.parse(p.at) >= Date.parse(fromIso) && Date.parse(p.at) < Date.parse(toIso))
     .sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
 }
+
+// The user's weekly queue times, Monday first.
+export async function getQueueSlots(): Promise<QueueSlot[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("queue_slots").select("id, weekday, time").order("weekday").order("time");
+  if (error) throw new Error(`Couldn't load your queue: ${error.message}`);
+  // Postgres sends times as "09:00:00".
+  return (data as QueueSlot[]).map((s) => ({ ...s, time: s.time.slice(0, 5) }));
+}
+
+// When "Add to queue" would schedule a post: the earliest queue time that has no
+// scheduled post yet. Null if there are no queue times, or all are taken for weeks.
+export async function getNextFreeSlot(timeZone: string, slots?: QueueSlot[]): Promise<Date | null> {
+  slots ??= await getQueueSlots();
+  if (slots.length === 0) return null;
+
+  // A few minutes ahead, because scheduling needs at least 2 minutes' notice.
+  const from = new Date(Date.now() + 5 * 60 * 1000);
+  const until = new Date(from.getTime() + QUEUE_HORIZON_DAYS * 24 * 60 * 60 * 1000);
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("posts")
+    .select("scheduled_at")
+    .in("status", ["scheduled", "publishing"])
+    .gte("scheduled_at", from.toISOString())
+    .lt("scheduled_at", until.toISOString());
+  if (error) throw new Error(`Couldn't check your queue: ${error.message}`);
+
+  const taken = new Set((data as { scheduled_at: string }[]).map((p) => minuteOf(p.scheduled_at)));
+  return upcomingSlotTimes(slots, timeZone, from, QUEUE_HORIZON_DAYS).find((at) => !taken.has(minuteOf(at))) ?? null;
+}
+
+export type QueueItem = {
+  at: string; // ISO time
+  isSlot: boolean; // one of the user's queue times (otherwise a post scheduled at another time)
+  post: { id: string; caption: string; platforms: PlatformId[] } | null; // null = free queue time
+};
+
+// The next `days` days of the queue: every queue time (free or filled) plus any
+// other scheduled posts, earliest first.
+export async function getQueueOverview(timeZone: string, slots: QueueSlot[], days = 14): Promise<QueueItem[]> {
+  const now = new Date();
+  const until = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+  const scheduled = (await getCalendarPosts(now.toISOString(), until.toISOString(), timeZone)).filter(
+    (p) => p.status === "scheduled" || p.status === "publishing"
+  );
+
+  const items: QueueItem[] = upcomingSlotTimes(slots, timeZone, now, days).map((at) => ({
+    at: at.toISOString(),
+    isSlot: true,
+    post: null,
+  }));
+  for (const p of scheduled) {
+    const post = { id: p.id, caption: p.caption, platforms: p.platforms };
+    const slot = items.find((i) => i.isSlot && !i.post && minuteOf(i.at) === minuteOf(p.at));
+    if (slot) slot.post = post;
+    else items.push({ at: p.at, isSlot: false, post });
+  }
+  return items.sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+}
+
+// The best weekday + hour to post, from the engagement on posts published in the
+// last 90 days. Posts from the last 24 hours are skipped while their numbers grow.
+// `cache`: Create and Queue can both ask during one request.
+export const getBestTimes = cache(async (timeZone: string): Promise<BestTimes> => {
+  const supabase = await createClient();
+  const now = Date.now();
+  const { data, error } = await supabase
+    .from("post_targets")
+    .select("published_at, post_metrics ( likes, comments, shares )")
+    .eq("status", "published")
+    .gte("published_at", new Date(now - 90 * 24 * 60 * 60 * 1000).toISOString())
+    .lt("published_at", new Date(now - 24 * 60 * 60 * 1000).toISOString())
+    .limit(1000);
+  if (error) throw new Error(`Couldn't work out your best times: ${error.message}`);
+
+  type MetricRow = { likes: number | null; comments: number | null; shares: number | null };
+  type Row = { published_at: string; post_metrics: MetricRow | MetricRow[] | null };
+  const posts = (data as unknown as Row[]).flatMap((t) => {
+    const m = Array.isArray(t.post_metrics) ? t.post_metrics[0] : t.post_metrics;
+    if (!m) return []; // numbers not collected yet
+    const score = engagementScore({
+      likes: Number(m.likes ?? 0),
+      comments: Number(m.comments ?? 0),
+      shares: Number(m.shares ?? 0),
+    });
+    return [{ publishedAt: t.published_at, score }];
+  });
+  return rankBestTimes(posts, timeZone);
+});
+
+// The best times as their next dates, for the Schedule panel on Create:
+// e.g. Tuesday 11:00 -> { label: "Tue 11:00 AM", local: "2026-10-20T11:00" }.
+export async function getBestTimeSuggestions(timeZone: string) {
+  const best = await getBestTimes(timeZone);
+  const soon = new Date(Date.now() + 5 * 60 * 1000);
+  const label = new Intl.DateTimeFormat("en", { weekday: "short", hour: "numeric", minute: "2-digit", timeZone });
+  return {
+    personal: best.personal,
+    times: best.times.flatMap((t) => {
+      const [at] = upcomingSlotTimes([{ id: "", ...t }], timeZone, soon, 8);
+      return at ? [{ label: label.format(at), local: utcToZonedInput(at, timeZone) }] : [];
+    }),
+  };
+}
+
+// The logged-in user's link-in-bio page (null until they first save it) and its links.
+export async function getMyBioPage(): Promise<{ page: BioPage | null; links: BioLink[]; avatarUrl: string | null }> {
+  const supabase = await createClient();
+  const [pageRes, linksRes, profileRes] = await Promise.all([
+    supabase.from("bio_pages").select("handle, title, bio, published").maybeSingle<BioPage>(),
+    supabase.from("bio_links").select("id, title, url").order("position").order("created_at"),
+    supabase.from("profiles").select("avatar_url").maybeSingle(),
+  ]);
+  if (pageRes.error || linksRes.error) {
+    throw new Error(`Couldn't load your link-in-bio page: ${(pageRes.error ?? linksRes.error)!.message}`);
+  }
+  return {
+    page: pageRes.data,
+    links: (linksRes.data ?? []) as BioLink[],
+    avatarUrl: (profileRes.data?.avatar_url as string | null) ?? null,
+  };
+}
+
+// A published link-in-bio page, for anyone (no login). Uses the secret key because
+// visitors have no database access of their own, so it only ever reads published
+// pages, and only the columns the page shows.
+export const getPublicBioPage = cache(async (handle: string) => {
+  const admin = createAdminClient();
+  const { data: page, error } = await admin
+    .from("bio_pages")
+    .select("user_id, title, bio")
+    .eq("handle", handle)
+    .eq("published", true)
+    .maybeSingle();
+  if (error) throw new Error(`Couldn't load this page: ${error.message}`);
+  if (!page) return null;
+
+  const [linksRes, profileRes] = await Promise.all([
+    admin.from("bio_links").select("id, title, url").eq("user_id", page.user_id).order("position").order("created_at"),
+    admin.from("profiles").select("avatar_url").eq("id", page.user_id).maybeSingle(),
+  ]);
+  return {
+    title: page.title as string,
+    bio: page.bio as string,
+    avatarUrl: (profileRes.data?.avatar_url as string | null) ?? null,
+    links: (linksRes.data ?? []) as BioLink[],
+  };
+});
 
 export type AnalyticsData = {
   totals: { views: number; likes: number; comments: number; shares: number; posts: number };

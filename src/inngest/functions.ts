@@ -1,5 +1,6 @@
 import "server-only";
 import { refreshUserMetrics } from "@/lib/analytics/collect";
+import { emailScheduledPostResult } from "@/lib/email/alerts";
 import { syncUserComments } from "@/lib/inbox";
 import { publishPost } from "@/lib/publishing";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -30,7 +31,7 @@ export const publishScheduledPost = inngest.createFunction(
     }
     await step.sleepUntil("wait-until-scheduled-time", new Date(target));
 
-    return step.run("publish", async () => {
+    const result = await step.run("publish", async () => {
       const admin = createAdminClient();
       const { data: post } = await admin
         .from("posts")
@@ -47,6 +48,11 @@ export const publishScheduledPost = inngest.createFunction(
 
       return publishPost(postId, userId);
     });
+    if ("skipped" in result) return result;
+
+    // A separate step, so a failed email is retried on its own without publishing again.
+    const email = await step.run("email-result", () => emailScheduledPostResult(createAdminClient(), postId, userId));
+    return { ...result, email };
   }
 );
 

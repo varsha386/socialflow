@@ -1,4 +1,5 @@
 import "server-only";
+import { markNeedsReconnecting } from "@/lib/email/alerts";
 import type { PlatformId } from "@/lib/platforms";
 import { graph } from "@/lib/publishing/graph";
 import { getAccessToken } from "@/lib/publishing/tokens";
@@ -38,15 +39,17 @@ export async function syncUserComments(userId: string) {
     .eq("status", "connected");
 
   for (const account of (accounts ?? []) as Account[]) {
-    const { data: targets } = await admin
+    const { data: rows } = await admin
       .from("post_targets")
-      .select("id, external_post_id")
+      .select("id, external_post_id, options")
       .eq("social_account_id", account.id)
       .eq("status", "published")
       .not("external_post_id", "is", null)
       .gte("published_at", since)
       .limit(50);
-    if (!targets?.length) continue;
+    // Instagram Stories can't have comments.
+    const targets = (rows ?? []).filter((t) => (t.options as { format?: string } | null)?.format !== "story");
+    if (!targets.length) continue;
 
     let token: string;
     try {
@@ -85,7 +88,7 @@ export async function syncUserComments(userId: string) {
 
 async function handleError(admin: Admin, account: Account, err: unknown) {
   if (err instanceof PublishError && err.reconnect) {
-    await admin.from("social_accounts").update({ status: "expired" }).eq("id", account.id);
+    await markNeedsReconnecting(admin, account.id);
   } else {
     console.error(`[inbox] ${account.platform} ${account.id}:`, err);
   }
@@ -254,7 +257,7 @@ export async function replyToComment(userId: string, commentId: string, message:
     return {};
   } catch (err) {
     if (err instanceof PublishError) {
-      if (err.reconnect) await admin.from("social_accounts").update({ status: "expired" }).eq("id", account.id);
+      if (err.reconnect) await markNeedsReconnecting(admin, account.id);
       return { error: err.message };
     }
     console.error("[inbox] reply failed:", err);

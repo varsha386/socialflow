@@ -2,7 +2,7 @@
 
 import { Bookmark, Ellipsis, Globe, Heart, MessageCircle, Play, Send, Share2, ThumbsUp } from "lucide-react";
 import type { PlatformId } from "@/lib/platforms";
-import type { MediaItem, YouTubeOptions } from "@/lib/post-rules";
+import { DEFAULT_INSTAGRAM, type InstagramOptions, type MediaItem, type YouTubeOptions } from "@/lib/post-rules";
 
 type PreviewAccount = { name: string; username: string | null; avatarUrl: string | null };
 
@@ -13,13 +13,16 @@ export function PostPreview({
   caption,
   media,
   youtube,
+  instagram = DEFAULT_INSTAGRAM,
 }: {
   platform: PlatformId;
   account: PreviewAccount;
   caption: string;
   media: MediaItem[];
   youtube: YouTubeOptions;
+  instagram?: InstagramOptions;
 }) {
+  if (platform === "instagram" && instagram.format === "story") return <InstagramStoryPreview account={account} media={media} />;
   if (platform === "instagram") return <InstagramPreview account={account} caption={caption} media={media} />;
   if (platform === "facebook") return <FacebookPreview account={account} caption={caption} media={media} />;
   return <YouTubePreview account={account} caption={caption} media={media} youtube={youtube} />;
@@ -101,6 +104,29 @@ function InstagramPreview({ account, caption, media }: { account: PreviewAccount
         ) : (
           <p className="text-neutral-400">Your caption will appear here</p>
         )}
+      </div>
+    </div>
+  );
+}
+
+// A Story fills a tall 9:16 screen, with the account at the top and no caption.
+function InstagramStoryPreview({ account, media }: { account: PreviewAccount; media: MediaItem[] }) {
+  const name = account.username ?? account.name;
+  return (
+    <div className="relative mx-auto aspect-[9/16] w-full max-w-[280px] overflow-hidden rounded-2xl bg-black text-[13px] text-white">
+      <MediaView item={media[0]} className="absolute inset-0 size-full" />
+      <div className="absolute inset-x-0 top-0 bg-gradient-to-b from-black/60 to-transparent px-3 pt-2 pb-6">
+        <div className="mb-2 h-0.5 rounded-full bg-white/80" />
+        <div className="flex items-center gap-2">
+          <Avatar account={account} size={28} />
+          <span className="font-semibold">{name}</span>
+          <span className="text-white/70">now</span>
+        </div>
+      </div>
+      <div className="absolute inset-x-3 bottom-3 flex items-center gap-2">
+        <span className="flex-1 rounded-full border border-white/60 px-3 py-1.5 text-white/80">Send message</span>
+        <Heart className="size-5" />
+        <Send className="size-5" />
       </div>
     </div>
   );

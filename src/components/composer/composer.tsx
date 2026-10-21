@@ -3,8 +3,9 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CalendarClock, CircleCheck, LoaderCircle, Send, TriangleAlert } from "lucide-react";
-import { saveDraft, schedulePost } from "@/app/(app)/create/actions";
+import { CalendarClock, CircleCheck, ListPlus, LoaderCircle, Send, TriangleAlert } from "lucide-react";
+import { addToQueue, saveDraft, schedulePost } from "@/app/(app)/create/actions";
+import { AiCaptionWriter } from "@/components/composer/ai-caption-writer";
 import { CaptionEditor } from "@/components/composer/caption-editor";
 import { MediaUploader } from "@/components/composer/media-uploader";
 import { PostPreview } from "@/components/composer/post-preview";
@@ -18,8 +19,10 @@ import { cn } from "@/lib/utils";
 import { PLATFORMS, type PlatformId } from "@/lib/platforms";
 import {
   CAPTION_LIMITS,
+  INSTAGRAM_STORY_MAX_SECONDS,
   YOUTUBE_TITLE_LIMIT,
   checkPost,
+  type InstagramOptions,
   type MediaItem,
   type YouTubeOptions,
 } from "@/lib/post-rules";
@@ -33,7 +36,16 @@ export type ComposerInitial = {
   accountIds: string[];
   customCaptions: Partial<Record<PlatformId, string>>;
   youtube: YouTubeOptions;
+  instagram: InstagramOptions;
 };
+
+// The posting queue, for the "Add to queue" button. `next` is the next free
+// time, already written out in the user's time zone (e.g. "Mon 20 Oct, 9:00 AM").
+export type ComposerQueue = { hasTimes: boolean; next: string | null };
+
+// Suggested times for the Schedule panel. `local` is "2026-10-20T11:00" in the
+// user's time zone; `personal` says whether they come from the user's own posts.
+export type ComposerBestTimes = { personal: boolean; times: { label: string; local: string }[] };
 
 const platformInfo = (id: PlatformId) => PLATFORMS.find((p) => p.id === id)!;
 
@@ -49,12 +61,16 @@ export function Composer({
   accounts,
   initial,
   suggestedDate,
+  queue,
+  bestTimes,
 }: {
   userId: string;
   timezone: string;
   suggestedDate?: string; // "YYYY-MM-DD" from the calendar: start with Schedule open for that day
   accounts: SocialAccount[];
   initial: ComposerInitial;
+  queue: ComposerQueue;
+  bestTimes: ComposerBestTimes;
 }) {
   const [postId, setPostId] = useState(initial.postId);
   const [selected, setSelected] = useState<string[]>(initial.accountIds);
@@ -62,6 +78,7 @@ export function Composer({
   const [caption, setCaption] = useState(initial.caption);
   const [customCaptions, setCustomCaptions] = useState(initial.customCaptions);
   const [youtube, setYoutube] = useState<YouTubeOptions>(initial.youtube);
+  const [instagram, setInstagram] = useState<InstagramOptions>(initial.instagram);
   const [tab, setTab] = useState<"all" | PlatformId>("all");
   const [previewChoice, setPreviewChoice] = useState<PlatformId | null>(null);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
@@ -82,7 +99,7 @@ export function Composer({
     previewChoice && platforms.includes(previewChoice) ? previewChoice : platforms[0] ?? null;
 
   const captionFor = (p: PlatformId) => customCaptions[p] ?? caption;
-  const checks = platforms.map((p) => ({ platform: p, problems: checkPost(p, captionFor(p), media, youtube) }));
+  const checks = platforms.map((p) => ({ platform: p, problems: checkPost(p, captionFor(p), media, youtube, instagram) }));
 
   function toggleAccount(id: string) {
     setMessage(null);
@@ -101,6 +118,7 @@ export function Composer({
         Object.entries(customCaptions).filter(([p]) => platforms.includes(p as PlatformId))
       ),
       youtube,
+      instagram,
     });
     if (result.postId && result.postId !== postId) {
       setPostId(result.postId);
@@ -149,6 +167,20 @@ export function Composer({
       const id = await save();
       if (!id) return;
       const result = await schedulePost(id, scheduleAt);
+      if (result.error) {
+        setMessage({ ok: false, text: result.error });
+        return;
+      }
+      router.push(`/posts/${id}`);
+    });
+  }
+
+  function handleQueue() {
+    if (!readyToSend()) return;
+    startSaving(async () => {
+      const id = await save();
+      if (!id) return;
+      const result = await addToQueue(id);
       if (result.error) {
         setMessage({ ok: false, text: result.error });
         return;
@@ -332,6 +364,17 @@ export function Composer({
               </>
             )}
 
+            <AiCaptionWriter
+              platforms={activeTab === "all" ? platforms : [activeTab]}
+              currentCaption={activeTab === "all" ? caption : captionFor(activeTab)}
+              target={activeTab === "all" ? "the main caption" : `the ${platformInfo(activeTab).name} caption`}
+              onUse={(text) => {
+                setMessage(null);
+                if (activeTab === "all") setCaption(text);
+                else setCustomCaptions((c) => ({ ...c, [activeTab]: text }));
+              }}
+            />
+
             {activeTab === "youtube" || (activeTab === "all" && platforms.includes("youtube")) ? (
               <div className="grid gap-3 rounded-2xl bg-muted p-4 sm:grid-cols-[1fr_auto]">
                 <div className="space-y-2">
@@ -364,6 +407,48 @@ export function Composer({
                   The caption becomes the video description. Until Google verifies SocialFlow, YouTube keeps
                   uploaded videos private.
                 </p>
+              </div>
+            ) : null}
+
+            {activeTab === "instagram" || (activeTab === "all" && platforms.includes("instagram")) ? (
+              <div className="space-y-2 rounded-2xl bg-muted p-4">
+                <p className="text-sm font-medium" id="ig-format-label">
+                  Instagram: post as
+                </p>
+                <div className="flex flex-wrap gap-2" role="radiogroup" aria-labelledby="ig-format-label">
+                  {(
+                    [
+                      { value: "feed", label: "Feed post", hint: "Photo, carousel or Reel, with the caption" },
+                      { value: "story", label: "Story", hint: "One photo or video, shown for 24 hours" },
+                    ] as const
+                  ).map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      role="radio"
+                      aria-checked={instagram.format === option.value}
+                      onClick={() => {
+                        setMessage(null);
+                        setInstagram({ format: option.value });
+                      }}
+                      className={cn(
+                        "flex-1 rounded-xl border px-3 py-2 text-left text-sm transition-colors",
+                        instagram.format === option.value
+                          ? "border-primary bg-card font-medium"
+                          : "border-transparent bg-card/60 text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {option.label}
+                      <span className="block text-xs font-normal text-muted-foreground">{option.hint}</span>
+                    </button>
+                  ))}
+                </div>
+                {instagram.format === "story" && (
+                  <p className="text-xs text-muted-foreground">
+                    Stories don&apos;t show a caption, so Instagram gets only the photo or video. Tall photos and
+                    videos (9:16) fill the screen best. Videos can be up to {INSTAGRAM_STORY_MAX_SECONDS} seconds.
+                  </p>
+                )}
               </div>
             ) : null}
           </CardContent>
@@ -408,6 +493,28 @@ export function Composer({
                 <CalendarClock />
                 Schedule
               </Button>
+              {queue.hasTimes ? (
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="h-11 px-6"
+                  onClick={handleQueue}
+                  disabled={saving || !queue.next}
+                  title={queue.next ? `Schedules it for ${queue.next}` : "Your queue is full. Add more posting times."}
+                >
+                  <ListPlus />
+                  Add to queue
+                </Button>
+              ) : (
+                <Link
+                  href="/queue"
+                  className={buttonVariants({ size: "lg", variant: "outline", className: "h-11 px-6" })}
+                  title="Pick the times you like to post, then add posts to the queue"
+                >
+                  <ListPlus />
+                  Set up queue
+                </Link>
+              )}
               <Button size="lg" variant="ghost" className="h-11 px-5" onClick={handleSave} disabled={saving}>
                 {saving && !publishing && !showSchedule && <LoaderCircle className="animate-spin" />}
                 Save draft
@@ -418,6 +525,20 @@ export function Composer({
                 </span>
               )}
             </div>
+            {queue.hasTimes && (
+              <p className="text-xs text-muted-foreground">
+                {queue.next ? (
+                  <>
+                    Next free queue time: <span className="font-medium text-foreground">{queue.next}</span>.{" "}
+                  </>
+                ) : (
+                  <>Your queue is full for the next 8 weeks. </>
+                )}
+                <Link href="/queue" className="font-medium text-primary hover:underline">
+                  Edit queue
+                </Link>
+              </p>
+            )}
 
             {showSchedule && <TimezoneWarning timezone={timezone} />}
             {showSchedule && (
@@ -439,6 +560,34 @@ export function Composer({
                   {saving && <LoaderCircle className="animate-spin" />}
                   Schedule post
                 </Button>
+                {bestTimes.times.length > 0 && (
+                  <div className="w-full space-y-1.5">
+                    <p className="text-xs text-muted-foreground">
+                      {bestTimes.personal ? "Your best times, from your past posts:" : "Good times to post (general advice until you have more posts):"}
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {bestTimes.times.map((t) => (
+                        <button
+                          key={t.local}
+                          type="button"
+                          onClick={() => {
+                            setMessage(null);
+                            setScheduleAt(t.local);
+                          }}
+                          aria-pressed={scheduleAt === t.local}
+                          className={cn(
+                            "rounded-full border px-3 py-1 text-sm transition-colors",
+                            scheduleAt === t.local
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border bg-card hover:bg-accent hover:text-accent-foreground"
+                          )}
+                        >
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <p className="w-full text-xs text-muted-foreground">
                   Time zone: {timeZoneLabel(timezone)}.{" "}
                   <Link href="/settings" className="font-medium text-primary hover:underline">
@@ -489,6 +638,7 @@ export function Composer({
             caption={captionFor(previewPlatform)}
             media={media}
             youtube={youtube}
+            instagram={instagram}
           />
         ) : (
           <div className="rounded-2xl border-2 border-dashed px-6 py-16 text-center text-sm text-muted-foreground">
