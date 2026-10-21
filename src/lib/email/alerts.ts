@@ -38,7 +38,7 @@ function layout(opts: { heading: string; intro: string; items?: string[]; button
   <p style="margin:0 0 12px;line-height:1.5">${escapeHtml(opts.intro)}</p>
   ${opts.items?.length ? `<ul style="padding-left:20px;line-height:1.6">${opts.items.map((i) => `<li>${escapeHtml(i)}</li>`).join("")}</ul>` : ""}
   ${opts.button ? `<p style="margin:20px 0"><a href="${escapeHtml(opts.button.url)}" style="background:#e0623a;color:#fff;text-decoration:none;padding:10px 18px;border-radius:999px;display:inline-block">${escapeHtml(opts.button.label)}</a></p>` : ""}
-  <p style="font-size:12px;color:#8a7a70;margin-top:24px">You can turn these emails off in SocialFlow under Settings &gt; Email alerts.</p>
+  <p style="font-size:12px;color:#8a7a70;margin-top:24px"><a href="${escapeHtml(`${siteUrl()}/settings?tab=notifications`)}" style="color:#8a7a70">Turn these emails off</a> in SocialFlow under Settings &gt; Notifications.</p>
 </div>`;
   const text = [
     opts.heading,
@@ -47,7 +47,7 @@ function layout(opts: { heading: string; intro: string; items?: string[]; button
     ...(opts.items?.length ? ["", ...opts.items.map((i) => `- ${i}`)] : []),
     ...(opts.button ? ["", `${opts.button.label}: ${opts.button.url}`] : []),
     "",
-    "You can turn these emails off in SocialFlow under Settings > Email alerts.",
+    `Turn these emails off in SocialFlow under Settings > Notifications: ${siteUrl()}/settings?tab=notifications`,
   ].join("\n");
   return { html, text };
 }
