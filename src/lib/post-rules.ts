@@ -31,7 +31,8 @@ export const CAPTION_LIMITS: Record<PlatformId, number> = {
 
 export const YOUTUBE_TITLE_LIMIT = 100;
 export const INSTAGRAM_MAX_HASHTAGS = 30;
-export const INSTAGRAM_MAX_MEDIA = 10;
+export const INSTAGRAM_MAX_MEDIA = 20; // carousel items (Meta's content publishing docs)
+export const INSTAGRAM_POSTS_PER_DAY = 100; // per account, in a rolling 24 hours (Meta's limit)
 
 export function countHashtags(text: string) {
   return text.match(/#[\p{L}\p{N}_]+/gu)?.length ?? 0;
