@@ -20,6 +20,7 @@
 | **Accounts** | Email/password and Google login, password reset, profile with time zone |
 | **Connections** | Connect Facebook Pages, Instagram Business/Creator accounts and YouTube channels with OAuth. Tokens are encrypted (AES-256-GCM) and never sent to the browser |
 | **Create post** | Upload photos and videos, write one caption or a different caption per platform, emoji, hashtag and link helpers, live previews, and per-platform checks (e.g. Instagram aspect ratios, "YouTube needs one video") |
+| **Uploads** | Photos up to 8 MB; videos up to 5 minutes and 50 MB (500 MB on Supabase Pro via `NEXT_PUBLIC_MAX_VIDEO_MB`). Files over 6 MB use resumable uploads with a progress bar and Cancel. Instagram carousels up to 20 items, and Instagram's 100-posts-per-day limit is shown on Create and checked before publishing |
 | **Publish now** | Sends to every chosen account in parallel: Facebook (text, photo, album, video), Instagram (photo, carousel, Reel), YouTube (resumable upload). Per-account results with retry |
 | **Scheduling** | Pick a date and time in your own time zone. Background jobs publish at that moment, and cancelling or rescheduling is handled safely |
 | **Calendar** | Month and week views. Drag a scheduled post to another day to move it |

@@ -246,6 +246,23 @@ export async function getPosts(tab: PostTab = "all"): Promise<PostListItem[]> {
   });
 }
 
+// Posts published by each Instagram account in the last 24 hours (Instagram allows 100).
+export async function getInstagramPostsToday(): Promise<Record<string, number>> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("post_targets")
+    .select("social_account_id, social_accounts!inner ( platform )")
+    .eq("status", "published")
+    .eq("social_accounts.platform", "instagram")
+    .gte("published_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+    .limit(1000);
+  const counts: Record<string, number> = {};
+  for (const row of (data ?? []) as { social_account_id: string }[]) {
+    counts[row.social_account_id] = (counts[row.social_account_id] ?? 0) + 1;
+  }
+  return counts;
+}
+
 // How many posts are on each Posts tab (for the tab labels).
 export async function getPostCounts(): Promise<Record<PostTab, number>> {
   const supabase = await createClient();

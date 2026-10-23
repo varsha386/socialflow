@@ -2,7 +2,13 @@ import "server-only";
 import { markNeedsReconnecting } from "@/lib/email/alerts";
 import { mediaUrl } from "@/lib/media";
 import type { PlatformId } from "@/lib/platforms";
-import { checkPost, type InstagramOptions, type MediaItem, type YouTubeOptions } from "@/lib/post-rules";
+import {
+  INSTAGRAM_POSTS_PER_DAY,
+  checkPost,
+  type InstagramOptions,
+  type MediaItem,
+  type YouTubeOptions,
+} from "@/lib/post-rules";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { PostStatus } from "@/lib/types";
 import { publishToFacebook } from "./facebook";
@@ -130,6 +136,23 @@ export async function publishPost(postId: string, userId: string): Promise<Publi
   const prepared = await prepare(admin, postId, userId);
   if ("error" in prepared) return prepared;
   const { media, todo, captionFor, youtubeOptions, instagramOptions } = prepared;
+
+  // Instagram allows 100 posts per account in a rolling 24 hours. Checked here (when it
+  // actually goes out) rather than when scheduling, so a post for tomorrow isn't blocked today.
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  for (const t of todo.filter((x) => x.social_accounts!.platform === "instagram")) {
+    const { count } = await admin
+      .from("post_targets")
+      .select("id", { count: "exact", head: true })
+      .eq("social_account_id", t.social_accounts!.id)
+      .eq("status", "published")
+      .gte("published_at", since);
+    if ((count ?? 0) >= INSTAGRAM_POSTS_PER_DAY) {
+      return {
+        error: `${t.social_accounts!.display_name ?? "Instagram"}: Instagram allows ${INSTAGRAM_POSTS_PER_DAY} posts per account in 24 hours, and this account has reached it. Try again later.`,
+      };
+    }
+  }
 
   // Claim the post. Only one request can move it to "publishing", so a
   // double-click (or a scheduler running twice) can't publish it twice.

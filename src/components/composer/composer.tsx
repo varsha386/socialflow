@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { PLATFORMS, type PlatformId } from "@/lib/platforms";
 import {
   CAPTION_LIMITS,
+  INSTAGRAM_POSTS_PER_DAY,
   INSTAGRAM_STORY_MAX_SECONDS,
   YOUTUBE_TITLE_LIMIT,
   checkPost,
@@ -63,6 +64,7 @@ export function Composer({
   suggestedDate,
   queue,
   bestTimes,
+  instagramPostsToday,
 }: {
   userId: string;
   timezone: string;
@@ -71,6 +73,7 @@ export function Composer({
   initial: ComposerInitial;
   queue: ComposerQueue;
   bestTimes: ComposerBestTimes;
+  instagramPostsToday: Record<string, number>; // account ID -> posts published in the last 24 hours
 }) {
   const [postId, setPostId] = useState(initial.postId);
   const [selected, setSelected] = useState<string[]>(initial.accountIds);
@@ -99,7 +102,27 @@ export function Composer({
     previewChoice && platforms.includes(previewChoice) ? previewChoice : platforms[0] ?? null;
 
   const captionFor = (p: PlatformId) => customCaptions[p] ?? caption;
-  const checks = platforms.map((p) => ({ platform: p, problems: checkPost(p, captionFor(p), media, youtube, instagram) }));
+  // Instagram allows 100 posts per account in 24 hours: block when reached, warn when close.
+  const instagramLimitNotes = accounts
+    .filter((a) => a.platform === "instagram" && selected.includes(a.id))
+    .flatMap((a) => {
+      const used = instagramPostsToday[a.id] ?? 0;
+      const name = a.username ? `@${a.username}` : (a.display_name ?? "This account");
+      if (used >= INSTAGRAM_POSTS_PER_DAY) {
+        return [`${name} has reached Instagram's ${INSTAGRAM_POSTS_PER_DAY} posts in 24 hours. Try again later.`];
+      }
+      if (used >= INSTAGRAM_POSTS_PER_DAY * 0.8) {
+        return [`${name} can post ${INSTAGRAM_POSTS_PER_DAY - used} more times in the next 24 hours.`];
+      }
+      return [];
+    });
+  const checks = platforms.map((p) => ({
+    platform: p,
+    problems: [
+      ...checkPost(p, captionFor(p), media, youtube, instagram),
+      ...(p === "instagram" ? instagramLimitNotes.filter((n) => n.includes("has reached")) : []),
+    ],
+  }));
 
   function toggleAccount(id: string) {
     setMessage(null);
@@ -475,6 +498,20 @@ export function Composer({
                   </li>
                 ))}
               </ul>
+            )}
+            {/* "Getting close" notes (the "reached" ones already show as problems above). */}
+            {instagramLimitNotes
+              .filter((n) => !n.includes("has reached"))
+              .map((note) => (
+                <p key={note} className="text-xs text-muted-foreground">
+                  Instagram: {note}
+                </p>
+              ))}
+            {platforms.includes("youtube") && (
+              <p className="text-xs text-muted-foreground">
+                YouTube: until Google raises SocialFlow&apos;s quota, only a few videos a day can be uploaded across all
+                users. If an upload fails for this reason, try again tomorrow.
+              </p>
             )}
 
             <div className="flex flex-wrap items-center gap-3 border-t pt-4">
