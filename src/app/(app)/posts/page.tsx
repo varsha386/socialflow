@@ -6,9 +6,10 @@ import { PlatformBadge } from "@/components/platform-badge";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { getCurrentUser, getPosts } from "@/lib/data";
+import { POST_TABS, getCurrentUser, getPostCounts, getPosts, type PostTab } from "@/lib/data";
 import { PLATFORMS } from "@/lib/platforms";
 import type { PostStatus } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import { DeleteDraftButton } from "./delete-draft-button";
 
 export const metadata: Metadata = { title: "Posts" };
@@ -22,8 +23,19 @@ const STATUS: Record<PostStatus, { label: string; variant: "default" | "secondar
   failed: { label: "Failed", variant: "destructive" },
 };
 
-export default async function PostsPage() {
-  const [user, posts] = await Promise.all([getCurrentUser(), getPosts()]);
+// What each tab says when it has no posts.
+const EMPTY: Record<PostTab, { title: string; text: string }> = {
+  all: { title: "Write your first post", text: "Drafts you save, and posts you schedule or publish, will show up here." },
+  draft: { title: "No drafts", text: "Posts you save without publishing or scheduling show up here." },
+  scheduled: { title: "Nothing scheduled", text: "Posts waiting to go out at a set time, or in your queue, show up here." },
+  published: { title: "Nothing published yet", text: "Posts that went out to all their accounts show up here." },
+  failed: { title: "No failed posts", text: "Posts that couldn't go out to one or more accounts show up here, ready to retry." },
+};
+
+export default async function PostsPage({ searchParams }: PageProps<"/posts">) {
+  const { status } = await searchParams;
+  const tab: PostTab = typeof status === "string" && status in POST_TABS ? (status as PostTab) : "all";
+  const [user, posts, counts] = await Promise.all([getCurrentUser(), getPosts(tab), getPostCounts()]);
   const formatDate = (iso: string) =>
     new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short", timeZone: user.timezone }).format(
       new Date(iso)
@@ -31,22 +43,51 @@ export default async function PostsPage() {
 
   return (
     <>
-      <PageHeader title="Posts" description="Drafts, scheduled, and published posts.">
+      <PageHeader title="Posts" description="Drafts, scheduled, published and failed posts.">
         <Link href="/create" className={buttonVariants({ size: "lg" })}>
           <SquarePen />
           Create post
         </Link>
       </PageHeader>
 
+      {/* Each tab has its own address (/posts?status=…), so Back, bookmarks and links work. */}
+      <nav aria-label="Post status" className="mb-6 flex flex-wrap gap-1">
+        {(Object.keys(POST_TABS) as PostTab[]).map((id) => {
+          const active = tab === id;
+          const alert = id === "failed" && counts.failed > 0;
+          return (
+            <Link
+              key={id}
+              href={id === "all" ? "/posts" : `/posts?status=${id}`}
+              aria-current={active ? "page" : undefined}
+              className={cn(
+                "flex items-center gap-2 rounded-full px-4 py-2 text-sm transition-colors",
+                active
+                  ? "bg-primary font-medium text-primary-foreground"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              )}
+            >
+              {POST_TABS[id].label}
+              <span
+                className={cn(
+                  "min-w-5 rounded-full px-1.5 text-center text-xs tabular-nums",
+                  alert ? "bg-destructive font-semibold text-white" : active ? "bg-primary-foreground/20" : "bg-muted"
+                )}
+              >
+                {counts[id]}
+              </span>
+            </Link>
+          );
+        })}
+      </nav>
+
       {posts.length === 0 ? (
         <div className="flex flex-col items-center rounded-3xl border-2 border-dashed bg-card px-6 py-16 text-center">
           <span className="mb-4 flex size-12 items-center justify-center rounded-full bg-accent text-accent-foreground">
             <FileText className="size-6" />
           </span>
-          <h2 className="font-medium">Write your first post</h2>
-          <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-            Drafts you save, and posts you schedule or publish, will show up here.
-          </p>
+          <h2 className="font-medium">{EMPTY[tab].title}</h2>
+          <p className="mt-1 max-w-sm text-sm text-muted-foreground">{EMPTY[tab].text}</p>
         </div>
       ) : (
         <Card className="gap-0 py-0">

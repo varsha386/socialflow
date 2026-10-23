@@ -188,10 +188,21 @@ export type PostListItem = {
   mediaCount: number;
 };
 
-// All of the user's posts, newest first, for the Posts page.
-export async function getPosts(): Promise<PostListItem[]> {
+// The tabs on the Posts page, and which post statuses each one shows.
+// "Failed" includes partly published posts, since both need a retry.
+export const POST_TABS = {
+  all: { label: "All", statuses: null },
+  draft: { label: "Drafts", statuses: ["draft"] },
+  scheduled: { label: "Scheduled", statuses: ["scheduled", "publishing"] },
+  published: { label: "Published", statuses: ["published"] },
+  failed: { label: "Failed", statuses: ["failed", "partially_published"] },
+} as const satisfies Record<string, { label: string; statuses: readonly PostStatus[] | null }>;
+export type PostTab = keyof typeof POST_TABS;
+
+// The user's posts on one tab, newest first, for the Posts page.
+export async function getPosts(tab: PostTab = "all"): Promise<PostListItem[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("posts")
     .select(
       `id, caption, status, scheduled_at, published_at, updated_at,
@@ -200,6 +211,9 @@ export async function getPosts(): Promise<PostListItem[]> {
     )
     .order("updated_at", { ascending: false })
     .limit(100);
+  const statuses = POST_TABS[tab].statuses;
+  if (statuses) query = query.in("status", [...statuses]);
+  const { data, error } = await query;
   if (error) throw new Error(`Couldn't load posts: ${error.message}`);
 
   type Row = {
@@ -231,6 +245,32 @@ export async function getPosts(): Promise<PostListItem[]> {
     };
   });
 }
+
+// How many posts are on each Posts tab (for the tab labels).
+export async function getPostCounts(): Promise<Record<PostTab, number>> {
+  const supabase = await createClient();
+  const tabs = Object.keys(POST_TABS) as PostTab[];
+  const counts = await Promise.all(
+    tabs.map(async (tab) => {
+      let query = supabase.from("posts").select("id", { count: "exact", head: true });
+      const statuses = POST_TABS[tab].statuses;
+      if (statuses) query = query.in("status", [...statuses]);
+      const { count } = await query;
+      return [tab, count ?? 0] as const;
+    })
+  );
+  return Object.fromEntries(counts) as Record<PostTab, number>;
+}
+
+// Failed or partly published posts, for the red count in the menu.
+export const getFailedPostCount = cache(async (): Promise<number> => {
+  const supabase = await createClient();
+  const { count } = await supabase
+    .from("posts")
+    .select("id", { count: "exact", head: true })
+    .in("status", [...POST_TABS.failed.statuses]);
+  return count ?? 0;
+});
 
 export type PostTargetDetail = {
   id: string;
