@@ -1,6 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { saveAccounts } from "@/lib/connectors";
+import { blueskyLogin, normalizeHandle } from "@/lib/connectors/bluesky";
+import { newAccountsAllowed } from "@/lib/plan-limits";
+import { FREE_LIMITS } from "@/lib/plans";
+import { PublishError } from "@/lib/publishing/types";
 import { createClient } from "@/lib/supabase/server";
 
 // Removes a connected account. Its saved tokens are deleted with it (ON DELETE CASCADE).
@@ -11,4 +16,67 @@ export async function disconnectAccount(accountId: string) {
   if (error) throw new Error("Couldn't disconnect that account. Try again.");
   revalidatePath("/connections");
   revalidatePath("/dashboard");
+}
+
+// Connects (or reconnects) a Bluesky account with its handle and an app password.
+// The app password is checked by logging in, then stored encrypted like other logins.
+export async function connectBluesky(handleInput: string, appPasswordInput: string): Promise<{ error?: string }> {
+  const handle = normalizeHandle(handleInput);
+  const appPassword = appPasswordInput.trim();
+  if (!/^[a-z0-9.-]{3,253}$/.test(handle)) return { error: "Enter your Bluesky handle, like name.bsky.social." };
+  if (appPassword.length < 8 || appPassword.length > 64) {
+    return { error: "Paste the app password Bluesky created for you (it looks like xxxx-xxxx-xxxx-xxxx)." };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Your session expired. Log in again." };
+
+  let agent;
+  try {
+    agent = await blueskyLogin(handle, appPassword);
+  } catch (err) {
+    if (err instanceof PublishError && err.reconnect) {
+      return {
+        error:
+          "Bluesky didn't accept that handle and app password. Check both, and use an app password, not your main Bluesky password.",
+      };
+    }
+    return { error: err instanceof PublishError ? err.message : "Couldn't reach Bluesky. Try again." };
+  }
+
+  const did = agent.did;
+  if (!did) return { error: "Couldn't reach Bluesky. Try again." };
+  const { data: profile } = await agent.getProfile({ actor: did });
+
+  // Free plan: reconnecting an account they already have is always allowed.
+  const { data: existing } = await supabase
+    .from("social_accounts")
+    .select("id")
+    .eq("platform", "bluesky")
+    .eq("platform_account_id", did)
+    .maybeSingle();
+  if (!existing && (await newAccountsAllowed(user.id)) < 1) {
+    return {
+      error: `The Free plan includes ${FREE_LIMITS.accounts} connected accounts, and you've reached it. Upgrade to Pro on the Plan page to connect more.`,
+    };
+  }
+
+  await saveAccounts(user.id, [
+    {
+      platform: "bluesky",
+      platformAccountId: did, // stays the same even if they change their handle
+      displayName: profile.displayName || profile.handle,
+      username: profile.handle,
+      avatarUrl: profile.avatar ?? null,
+      accessToken: appPassword,
+      refreshToken: null,
+      expiresAt: null,
+    },
+  ]);
+  revalidatePath("/connections");
+  revalidatePath("/create");
+  return {};
 }

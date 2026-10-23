@@ -6,13 +6,15 @@ import { metaConnector } from "./meta";
 import type { ConnectedAccount, Connector } from "./types";
 import { youtubeConnector } from "./youtube";
 
-export const CONNECTORS: Record<ProviderId, Connector> = {
+// Services connected through a login window. (Bluesky connects with an app password
+// on the Connections page instead: see src/app/(app)/connections/actions.ts.)
+export const CONNECTORS: Record<Exclude<ProviderId, "bluesky">, Connector> = {
   youtube: youtubeConnector,
   meta: metaConnector,
 };
 
 export function getConnector(id: string): Connector | null {
-  return id in CONNECTORS ? CONNECTORS[id as ProviderId] : null;
+  return id in CONNECTORS ? CONNECTORS[id as keyof typeof CONNECTORS] : null;
 }
 
 export function missingEnv(connector: Connector): string[] {

@@ -26,7 +26,8 @@ export async function refreshUserMetrics(userId: string) {
     .from("social_accounts")
     .select("id, platform, platform_account_id")
     .eq("user_id", userId)
-    .eq("status", "connected");
+    .eq("status", "connected")
+    .in("platform", ["facebook", "instagram", "youtube"]); // Bluesky analytics aren't supported yet
 
   const summary = { accounts: 0, posts: 0, errors: 0 };
 

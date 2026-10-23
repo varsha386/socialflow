@@ -11,6 +11,7 @@ import {
 } from "@/lib/post-rules";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { PostStatus } from "@/lib/types";
+import { publishToBluesky } from "./bluesky";
 import { publishToFacebook } from "./facebook";
 import { publishToInstagram } from "./instagram";
 import { getAccessToken } from "./tokens";
@@ -21,6 +22,7 @@ const PUBLISHERS: Record<PlatformId, (job: PublishJob) => Promise<PublishResult>
   facebook: publishToFacebook,
   instagram: publishToInstagram,
   youtube: publishToYouTube,
+  bluesky: publishToBluesky,
 };
 
 // Posts in these states may be (re)published.

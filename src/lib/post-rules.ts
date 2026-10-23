@@ -27,7 +27,15 @@ export const CAPTION_LIMITS: Record<PlatformId, number> = {
   instagram: 2200,
   facebook: 63206,
   youtube: 5000, // the video description
+  bluesky: 300, // counted in "graphemes": an emoji or accented letter counts once
 };
+
+export const BLUESKY_MAX_IMAGES = 4;
+
+// Characters as people see them (Bluesky counts this way; "👍🏽" is one, not four).
+export function countGraphemes(text: string) {
+  return [...new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(text)].length;
+}
 
 export const YOUTUBE_TITLE_LIMIT = 100;
 export const INSTAGRAM_MAX_HASHTAGS = 30;
@@ -52,8 +60,16 @@ export function checkPost(
   const story = platform === "instagram" && instagram.format === "story";
 
   // Stories don't show a caption, so its length doesn't matter there.
-  if (caption.length > limit && !story) {
-    problems.push(`Caption is ${caption.length - limit} characters too long.`);
+  const length = platform === "bluesky" ? countGraphemes(caption) : caption.length;
+  if (length > limit && !story) {
+    problems.push(`Caption is ${length - limit} characters too long.`);
+  }
+
+  if (platform === "bluesky") {
+    if (!caption.trim() && media.length === 0) problems.push("Write something or add a photo.");
+    if (videos.length > 0) problems.push("Bluesky videos aren't supported in SocialFlow yet. Use photos.");
+    if (media.length > BLUESKY_MAX_IMAGES) problems.push(`Use ${BLUESKY_MAX_IMAGES} photos or fewer.`);
+    if (media.some((m) => m.mimeType === "image/gif")) problems.push("GIFs aren't supported.");
   }
 
   if (story) {
