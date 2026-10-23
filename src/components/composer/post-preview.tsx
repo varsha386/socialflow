@@ -25,6 +25,7 @@ export function PostPreview({
   if (platform === "instagram" && instagram.format === "story") return <InstagramStoryPreview account={account} media={media} />;
   if (platform === "instagram") return <InstagramPreview account={account} caption={caption} media={media} />;
   if (platform === "facebook") return <FacebookPreview account={account} caption={caption} media={media} />;
+  if (platform === "bluesky") return <BlueskyPreview account={account} caption={caption} media={media} />;
   return <YouTubePreview account={account} caption={caption} media={media} youtube={youtube} />;
 }
 
@@ -104,6 +105,39 @@ function InstagramPreview({ account, caption, media }: { account: PreviewAccount
         ) : (
           <p className="text-neutral-400">Your caption will appear here</p>
         )}
+      </div>
+    </div>
+  );
+}
+
+// A Bluesky post: avatar, name and handle, text, then up to 4 photos in a grid.
+function BlueskyPreview({ account, caption, media }: { account: PreviewAccount; caption: string; media: MediaItem[] }) {
+  const photos = media.filter((m) => m.kind === "image").slice(0, 4);
+  return (
+    <div className="flex gap-3 overflow-hidden rounded-2xl border bg-white p-3 text-[14px] text-[#0b0f14]">
+      <Avatar account={account} size={40} />
+      <div className="min-w-0 flex-1">
+        <p className="truncate">
+          <span className="font-semibold">{account.name}</span>{" "}
+          <span className="text-[#6f869f]">@{account.username ?? "handle"} · now</span>
+        </p>
+        {caption ? (
+          <Caption text={caption} className="mt-0.5" />
+        ) : (
+          <p className="mt-0.5 text-neutral-400">What&apos;s up?</p>
+        )}
+        {photos.length > 0 && (
+          <div className={`mt-2 grid gap-1 overflow-hidden rounded-xl ${photos.length > 1 ? "grid-cols-2" : ""}`}>
+            {photos.map((m) => (
+              <MediaView key={m.id} item={m} className={photos.length > 1 ? "aspect-square w-full" : "max-h-80 w-full"} />
+            ))}
+          </div>
+        )}
+        <div className="mt-2 flex gap-8 text-[#6f869f]">
+          <MessageCircle className="size-4" />
+          <Share2 className="size-4" />
+          <Heart className="size-4" />
+        </div>
       </div>
     </div>
   );
