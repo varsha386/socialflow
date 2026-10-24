@@ -18,6 +18,7 @@ const PROVIDER_NAMES: Record<ProviderId, string> = {
   meta: "Facebook and Instagram",
   youtube: "YouTube",
   bluesky: "Bluesky",
+  threads: "Threads",
 };
 
 // Turns the ?connected=… or ?error=… left by /api/connect (or the Bluesky form) into a message.
@@ -33,6 +34,7 @@ function resultMessage(params: Record<string, string | string[] | undefined>) {
       : "";
     if (provider === "youtube") return { ok: true, text: `Your YouTube channel is connected.${limitNote}` };
     if (provider === "bluesky") return { ok: true, text: "Your Bluesky account is connected." };
+    if (provider === "threads") return { ok: true, text: `Your Threads profile is connected.${limitNote}` };
     return {
       ok: true,
       text: `Connected ${count} ${count === 1 ? "account" : "accounts"} from Facebook and Instagram.${limitNote}`,

@@ -22,6 +22,11 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  logging: {
+    // Don't print server action arguments in the dev server window: they can include
+    // passwords people type (e.g. a Bluesky app password).
+    serverFunctions: false,
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

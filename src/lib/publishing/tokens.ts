@@ -1,5 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { refreshThreadsToken } from "@/lib/connectors/threads";
 import { decrypt, encrypt } from "@/lib/crypto";
 import type { PlatformId } from "@/lib/platforms";
 import { PublishError } from "./types";
@@ -19,6 +20,23 @@ export async function getAccessToken(
   if (error || !row) throw new PublishError("This account's login is missing. Reconnect it.", { reconnect: true });
 
   const expiresAt = row.expires_at ? new Date(row.expires_at).getTime() : null;
+
+  // Threads logins last 60 days: renew them when under 10 days are left, so people
+  // who post regularly never have to reconnect. If renewing fails, the old one is used while it lasts.
+  const tenDays = 10 * 24 * 60 * 60 * 1000;
+  if (platform === "threads" && expiresAt !== null && expiresAt > Date.now() && expiresAt < Date.now() + tenDays) {
+    try {
+      const renewed = await refreshThreadsToken(decrypt(row.access_token));
+      await admin
+        .from("social_account_tokens")
+        .update({ access_token: encrypt(renewed.accessToken), expires_at: renewed.expiresAt.toISOString() })
+        .eq("account_id", accountId);
+      return renewed.accessToken;
+    } catch (err) {
+      console.error("[threads] couldn't renew the login:", err);
+    }
+  }
+
   const stillValid = expiresAt === null || expiresAt > Date.now() + 2 * 60 * 1000;
   if (stillValid) return decrypt(row.access_token);
 

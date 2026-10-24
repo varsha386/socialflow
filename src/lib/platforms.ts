@@ -4,8 +4,8 @@
 // both connect through one Meta login.
 // `connectWith` is how people connect it: a login window ("oauth"), or a form
 // on the Connections page asking for an app password ("app-password").
-export type PlatformId = "instagram" | "facebook" | "youtube" | "bluesky";
-export type ProviderId = "meta" | "youtube" | "bluesky";
+export type PlatformId = "instagram" | "facebook" | "youtube" | "bluesky" | "threads";
+export type ProviderId = "meta" | "youtube" | "bluesky" | "threads";
 
 export type Platform = {
   id: PlatformId;
@@ -46,6 +46,15 @@ export const PLATFORMS: Platform[] = [
     connectWith: "oauth",
   },
   {
+    id: "threads",
+    name: "Threads",
+    short: "@",
+    color: "#101010",
+    description: "Text, photos, videos and carousels on your Threads profile.",
+    provider: "threads",
+    connectWith: "oauth",
+  },
+  {
     id: "bluesky",
     name: "Bluesky",
     short: "BS",
@@ -57,4 +66,4 @@ export const PLATFORMS: Platform[] = [
 ];
 
 // Shown greyed out on the Connections page, so people know what's on the way.
-export const COMING_SOON = ["Threads", "LinkedIn", "TikTok", "Pinterest", "Reddit"];
+export const COMING_SOON = ["LinkedIn", "TikTok", "Pinterest", "Reddit"];
