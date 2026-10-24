@@ -28,7 +28,11 @@ export const CAPTION_LIMITS: Record<PlatformId, number> = {
   facebook: 63206,
   youtube: 5000, // the video description
   bluesky: 300, // counted in "graphemes": an emoji or accented letter counts once
+  threads: 500,
 };
+
+export const THREADS_MAX_MEDIA = 20; // carousel items
+export const THREADS_POSTS_PER_DAY = 250; // per account, in a rolling 24 hours (Meta's limit)
 
 export const BLUESKY_MAX_IMAGES = 4;
 
@@ -63,6 +67,12 @@ export function checkPost(
   const length = platform === "bluesky" ? countGraphemes(caption) : caption.length;
   if (length > limit && !story) {
     problems.push(`Caption is ${length - limit} characters too long.`);
+  }
+
+  if (platform === "threads") {
+    if (!caption.trim() && media.length === 0) problems.push("Write something or add a photo or video.");
+    if (media.length > THREADS_MAX_MEDIA) problems.push(`Use ${THREADS_MAX_MEDIA} files or fewer.`);
+    if (media.some((m) => m.mimeType === "image/gif")) problems.push("GIFs aren't supported.");
   }
 
   if (platform === "bluesky") {

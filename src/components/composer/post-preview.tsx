@@ -26,6 +26,8 @@ export function PostPreview({
   if (platform === "instagram") return <InstagramPreview account={account} caption={caption} media={media} />;
   if (platform === "facebook") return <FacebookPreview account={account} caption={caption} media={media} />;
   if (platform === "bluesky") return <BlueskyPreview account={account} caption={caption} media={media} />;
+  // Threads posts look much like Bluesky's: avatar, name, text, then photos.
+  if (platform === "threads") return <BlueskyPreview account={account} caption={caption} media={media} />;
   return <YouTubePreview account={account} caption={caption} media={media} youtube={youtube} />;
 }
 

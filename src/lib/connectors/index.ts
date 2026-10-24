@@ -3,6 +3,7 @@ import { encrypt } from "@/lib/crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { ProviderId } from "@/lib/platforms";
 import { metaConnector } from "./meta";
+import { threadsConnector } from "./threads";
 import type { ConnectedAccount, Connector } from "./types";
 import { youtubeConnector } from "./youtube";
 
@@ -11,6 +12,7 @@ import { youtubeConnector } from "./youtube";
 export const CONNECTORS: Record<Exclude<ProviderId, "bluesky">, Connector> = {
   youtube: youtubeConnector,
   meta: metaConnector,
+  threads: threadsConnector,
 };
 
 export function getConnector(id: string): Connector | null {

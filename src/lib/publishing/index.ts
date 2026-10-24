@@ -4,6 +4,7 @@ import { mediaUrl } from "@/lib/media";
 import type { PlatformId } from "@/lib/platforms";
 import {
   INSTAGRAM_POSTS_PER_DAY,
+  THREADS_POSTS_PER_DAY,
   checkPost,
   type InstagramOptions,
   type MediaItem,
@@ -14,6 +15,7 @@ import type { PostStatus } from "@/lib/types";
 import { publishToBluesky } from "./bluesky";
 import { publishToFacebook } from "./facebook";
 import { publishToInstagram } from "./instagram";
+import { publishToThreads } from "./threads";
 import { getAccessToken } from "./tokens";
 import { PublishError, type PublishJob, type PublishResult } from "./types";
 import { publishToYouTube } from "./youtube";
@@ -23,6 +25,7 @@ const PUBLISHERS: Record<PlatformId, (job: PublishJob) => Promise<PublishResult>
   instagram: publishToInstagram,
   youtube: publishToYouTube,
   bluesky: publishToBluesky,
+  threads: publishToThreads,
 };
 
 // Posts in these states may be (re)published.
@@ -139,19 +142,25 @@ export async function publishPost(postId: string, userId: string): Promise<Publi
   if ("error" in prepared) return prepared;
   const { media, todo, captionFor, youtubeOptions, instagramOptions } = prepared;
 
-  // Instagram allows 100 posts per account in a rolling 24 hours. Checked here (when it
-  // actually goes out) rather than when scheduling, so a post for tomorrow isn't blocked today.
+  // Instagram allows 100 posts per account in a rolling 24 hours, Threads 250. Checked here
+  // (when it actually goes out) rather than when scheduling, so a post for tomorrow isn't blocked today.
+  const dailyLimits: Partial<Record<PlatformId, { name: string; max: number }>> = {
+    instagram: { name: "Instagram", max: INSTAGRAM_POSTS_PER_DAY },
+    threads: { name: "Threads", max: THREADS_POSTS_PER_DAY },
+  };
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  for (const t of todo.filter((x) => x.social_accounts!.platform === "instagram")) {
+  for (const t of todo) {
+    const limit = dailyLimits[t.social_accounts!.platform];
+    if (!limit) continue;
     const { count } = await admin
       .from("post_targets")
       .select("id", { count: "exact", head: true })
       .eq("social_account_id", t.social_accounts!.id)
       .eq("status", "published")
       .gte("published_at", since);
-    if ((count ?? 0) >= INSTAGRAM_POSTS_PER_DAY) {
+    if ((count ?? 0) >= limit.max) {
       return {
-        error: `${t.social_accounts!.display_name ?? "Instagram"}: Instagram allows ${INSTAGRAM_POSTS_PER_DAY} posts per account in 24 hours, and this account has reached it. Try again later.`,
+        error: `${t.social_accounts!.display_name ?? limit.name}: ${limit.name} allows ${limit.max} posts per account in 24 hours, and this account has reached it. Try again later.`,
       };
     }
   }
