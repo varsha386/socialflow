@@ -21,6 +21,7 @@
 | **Connections** | Connect Facebook Pages, Instagram Business/Creator accounts and YouTube channels with OAuth. Tokens are encrypted (AES-256-GCM) and never sent to the browser |
 | **Create post** | Upload photos and videos, write one caption or a different caption per platform, emoji, hashtag and link helpers, live previews, and per-platform checks (e.g. Instagram aspect ratios, "YouTube needs one video") |
 | **Bluesky** | Connect with a handle and an app password (stored encrypted). Posts up to 300 characters with clickable links, #hashtags and @mentions, plus up to 4 photos (shrunk automatically to Bluesky's ~1 MB limit). Works with Schedule, Queue and Post again. Videos, analytics and comments are not supported yet |
+| **Delete posts** | Delete failed, partly published and published posts from a post's page, or several at once with Select on the Posts tabs. Optionally also delete the live copies from Facebook, Instagram, YouTube, Bluesky and Threads; if any platform refuses, the post stays in SocialFlow with the reason. Needs `instagram_manage_contents` and `threads_delete` (reconnect once) |
 | **Threads** | Connect with "Log in with Threads" (60-day login, renewed automatically when under 10 days are left). Posts up to 500 characters: text only, one photo or video, or a carousel of 2–20. Checks Threads' 250 posts per account per 24 hours. Needs `THREADS_APP_ID` and `THREADS_APP_SECRET` and the `threads_platform` migration |
 | **Connections** | Shows only connected accounts; "Add account" opens a platform picker (Instagram, Facebook, YouTube, Bluesky, with more marked "coming soon") |
 | **Uploads** | Photos up to 8 MB; videos up to 5 minutes and 50 MB (500 MB on Supabase Pro via `NEXT_PUBLIC_MAX_VIDEO_MB`). Files over 6 MB use resumable uploads with a progress bar and Cancel. Instagram carousels up to 20 items, and Instagram's 100-posts-per-day limit is shown on Create and checked before publishing |
@@ -103,13 +104,13 @@ supabase/migrations/  Database setup, run in order
    | `META_APP_ID`, `META_APP_SECRET` | Meta for Developers app (Pages and Instagram use cases) |
    | `INNGEST_DEV=1` | Local only. On Vercel, the Inngest integration adds its keys instead |
 
-4. Add the OAuth redirect URLs: `http://localhost:3000/api/connect/youtube/callback` (Google) and `https://<your-domain>/api/connect/meta/callback` (Meta).
+4. Add the OAuth redirect URLs (local dev runs on **https**, which Threads and Meta require): `https://localhost:3000/api/connect/youtube/callback` (Google), `https://localhost:3000/api/connect/meta/callback` (Meta), `https://localhost:3000/api/connect/threads/callback` (Threads), plus the same paths on your live domain, and `https://localhost:3000/**` in Supabase → Authentication → URL Configuration.
 5. Start it: on Windows, double-click `start-dev.bat` (it also starts the Inngest Dev Server). Elsewhere:
 
    ```bash
    npm install
-   npm run dev
-   npx inngest-cli@latest dev -u http://localhost:3000/api/inngest
+   npx next dev --experimental-https
+   npx inngest-cli@latest dev -u https://localhost:3000/api/inngest
    ```
 
 ## Limitations

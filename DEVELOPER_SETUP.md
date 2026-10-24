@@ -153,8 +153,24 @@ It opens two windows:
 
 | Window | What it is | Address |
 |---|---|---|
-| **SocialFlow dev server** | The app | http://localhost:3000 |
+| **SocialFlow dev server** | The app | https://localhost:3000 |
 | **SocialFlow scheduler (Inngest)** | Runs scheduled posts and background jobs on your computer | http://localhost:8288 |
+
+The app runs on **https** because Threads and Meta only accept https login addresses. To avoid a browser warning, make a certificate once with [mkcert](https://github.com/FiloSottile/mkcert) (`winget install FiloSottile.mkcert`), from the project folder:
+
+```bash
+mkcert -install
+```
+
+```bash
+mkdir certificates
+```
+
+```bash
+mkcert -key-file certificates\localhost-key.pem -cert-file certificates\localhost.pem localhost 127.0.0.1 ::1
+```
+
+Without it, Next.js makes its own certificate. `.pem` files are never committed.
 
 The first page load can take a minute while it compiles. After that, saving a file updates the browser automatically.
 
@@ -162,7 +178,7 @@ The first page load can take a minute while it compiles. After that, saving a fi
 
 ### Your first login
 
-1. Open http://localhost:3000 and click **Sign up** with **your own email** (or **Continue with Google**).
+1. Open https://localhost:3000 and click **Sign up** with **your own email** (or **Continue with Google**).
 2. In **Settings**, set your **time zone**.
 3. In **Connections**, connect your own test accounts:
    - **Instagram:** must be a Business or Creator account, linked to a Facebook Page you manage.

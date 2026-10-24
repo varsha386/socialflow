@@ -10,20 +10,20 @@ type GraphErrorBody = {
 
 // Calls the Facebook Graph API (used for both Facebook Pages and Instagram).
 export async function graph<T>(
-  method: "GET" | "POST",
+  method: "GET" | "POST" | "DELETE",
   path: string,
   params: Record<string, string>,
   accessToken: string
 ): Promise<T> {
   const query = new URLSearchParams({ ...params, access_token: accessToken });
   const res =
-    method === "GET"
-      ? await fetch(`${GRAPH}${path}?${query}`)
-      : await fetch(`${GRAPH}${path}`, {
+    method === "POST"
+      ? await fetch(`${GRAPH}${path}`, {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
           body: query,
-        });
+        })
+      : await fetch(`${GRAPH}${path}?${query}`, { method });
   const body = (await res.json()) as T & GraphErrorBody;
 
   if (!res.ok || body.error) {
