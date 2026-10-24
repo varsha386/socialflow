@@ -12,13 +12,14 @@ const API = `${THREADS_GRAPH}/v1.0`;
 const SCOPES = [
   "threads_basic", // read the profile (required for everything)
   "threads_content_publish", // publish posts
+  "threads_delete", // delete posts made through SocialFlow (Posts > Delete)
 ];
 
 type ThreadsError = { error?: { message?: string; code?: number; error_user_msg?: string } };
 
 // Calls the Threads API. A token problem (code 190) means the person must reconnect.
 export async function threadsApi<T>(
-  method: "GET" | "POST",
+  method: "GET" | "POST" | "DELETE",
   path: string,
   params: Record<string, string>,
   accessToken: string,
@@ -26,13 +27,13 @@ export async function threadsApi<T>(
 ): Promise<T> {
   const query = new URLSearchParams({ ...params, access_token: accessToken });
   const res =
-    method === "GET"
-      ? await fetch(`${base}${path}?${query}`)
-      : await fetch(`${base}${path}`, {
+    method === "POST"
+      ? await fetch(`${base}${path}`, {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
           body: query,
-        });
+        })
+      : await fetch(`${base}${path}?${query}`, { method });
   const body = (await res.json()) as T & ThreadsError;
   if (!res.ok || body.error) {
     const err = body.error;

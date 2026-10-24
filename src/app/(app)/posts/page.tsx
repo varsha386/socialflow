@@ -5,12 +5,12 @@ import { PageHeader } from "@/components/page-header";
 import { PlatformBadge } from "@/components/platform-badge";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { POST_TABS, getCurrentUser, getPostCounts, getPosts, type PostTab } from "@/lib/data";
 import { PLATFORMS } from "@/lib/platforms";
 import type { PostStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { DeleteDraftButton } from "./delete-draft-button";
+import { SelectablePostList } from "./delete-posts";
 
 export const metadata: Metadata = { title: "Posts" };
 
@@ -90,9 +90,8 @@ export default async function PostsPage({ searchParams }: PageProps<"/posts">) {
           <p className="mt-1 max-w-sm text-sm text-muted-foreground">{EMPTY[tab].text}</p>
         </div>
       ) : (
-        <Card className="gap-0 py-0">
-          <ul className="divide-y">
-            {posts.map((post) => {
+        <SelectablePostList
+          items={posts.map((post) => {
               const status = STATUS[post.status];
               const when =
                 post.status === "scheduled" && post.scheduledAt
@@ -101,8 +100,8 @@ export default async function PostsPage({ searchParams }: PageProps<"/posts">) {
                     ? `Published ${formatDate(post.publishedAt)}`
                     : `Edited ${formatDate(post.updatedAt)}`;
 
-              return (
-                <li key={post.id} className="flex items-center gap-4 px-4 py-3">
+              const row = (
+                <div className="flex items-center gap-4 px-4 py-3">
                   <div className="relative size-14 shrink-0 overflow-hidden rounded-xl bg-muted">
                     {post.thumbnail?.kind === "image" && (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -159,11 +158,20 @@ export default async function PostsPage({ searchParams }: PageProps<"/posts">) {
                       </>
                     )}
                   </div>
-                </li>
+                </div>
               );
+              const isLive = post.status === "published" || post.status === "partially_published";
+              return {
+                id: post.id,
+                // Scheduled or publishing posts must have their schedule cancelled first.
+                deletable: post.status !== "scheduled" && post.status !== "publishing",
+                live: isLive
+                  ? post.platforms.map((id) => ({ account: PLATFORMS.find((p) => p.id === id)?.name ?? id, platform: "" }))
+                  : [],
+                row,
+              };
             })}
-          </ul>
-        </Card>
+        />
       )}
     </>
   );
