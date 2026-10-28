@@ -2,7 +2,14 @@
 
 import { Bookmark, Ellipsis, Globe, Heart, MessageCircle, Play, Send, Share2, ThumbsUp } from "lucide-react";
 import type { PlatformId } from "@/lib/platforms";
-import { DEFAULT_INSTAGRAM, type InstagramOptions, type MediaItem, type YouTubeOptions } from "@/lib/post-rules";
+import {
+  DEFAULT_INSTAGRAM,
+  DEFAULT_PINTEREST,
+  type InstagramOptions,
+  type MediaItem,
+  type PinterestOptions,
+  type YouTubeOptions,
+} from "@/lib/post-rules";
 
 type PreviewAccount = { name: string; username: string | null; avatarUrl: string | null };
 
@@ -14,6 +21,7 @@ export function PostPreview({
   media,
   youtube,
   instagram = DEFAULT_INSTAGRAM,
+  pinterest = DEFAULT_PINTEREST,
 }: {
   platform: PlatformId;
   account: PreviewAccount;
@@ -21,10 +29,17 @@ export function PostPreview({
   media: MediaItem[];
   youtube: YouTubeOptions;
   instagram?: InstagramOptions;
+  pinterest?: PinterestOptions;
 }) {
+  if (platform === "pinterest") return <PinterestPreview account={account} caption={caption} media={media} title={pinterest.title} />;
   if (platform === "instagram" && instagram.format === "story") return <InstagramStoryPreview account={account} media={media} />;
   if (platform === "instagram") return <InstagramPreview account={account} caption={caption} media={media} />;
   if (platform === "facebook") return <FacebookPreview account={account} caption={caption} media={media} />;
+  if (platform === "bluesky") return <BlueskyPreview account={account} caption={caption} media={media} />;
+  // Threads posts look much like Bluesky's: avatar, name, text, then photos.
+  if (platform === "threads") return <BlueskyPreview account={account} caption={caption} media={media} />;
+  // LinkedIn posts look much like Facebook's: name, text, then a photo grid or video.
+  if (platform === "linkedin") return <FacebookPreview account={account} caption={caption} media={media} />;
   return <YouTubePreview account={account} caption={caption} media={media} youtube={youtube} />;
 }
 
@@ -104,6 +119,79 @@ function InstagramPreview({ account, caption, media }: { account: PreviewAccount
         ) : (
           <p className="text-neutral-400">Your caption will appear here</p>
         )}
+      </div>
+    </div>
+  );
+}
+
+// A Bluesky post: avatar, name and handle, text, then up to 4 photos in a grid.
+function BlueskyPreview({ account, caption, media }: { account: PreviewAccount; caption: string; media: MediaItem[] }) {
+  const photos = media.filter((m) => m.kind === "image").slice(0, 4);
+  return (
+    <div className="flex gap-3 overflow-hidden rounded-2xl border bg-white p-3 text-[14px] text-[#0b0f14]">
+      <Avatar account={account} size={40} />
+      <div className="min-w-0 flex-1">
+        <p className="truncate">
+          <span className="font-semibold">{account.name}</span>{" "}
+          <span className="text-[#6f869f]">@{account.username ?? "handle"} · now</span>
+        </p>
+        {caption ? (
+          <Caption text={caption} className="mt-0.5" />
+        ) : (
+          <p className="mt-0.5 text-neutral-400">What&apos;s up?</p>
+        )}
+        {photos.length > 0 && (
+          <div className={`mt-2 grid gap-1 overflow-hidden rounded-xl ${photos.length > 1 ? "grid-cols-2" : ""}`}>
+            {photos.map((m) => (
+              <MediaView key={m.id} item={m} className={photos.length > 1 ? "aspect-square w-full" : "max-h-80 w-full"} />
+            ))}
+          </div>
+        )}
+        <div className="mt-2 flex gap-8 text-[#6f869f]">
+          <MessageCircle className="size-4" />
+          <Share2 className="size-4" />
+          <Heart className="size-4" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// A Pin: the photo with rounded corners, then the title, description and account.
+function PinterestPreview({
+  account,
+  caption,
+  media,
+  title,
+}: {
+  account: PreviewAccount;
+  caption: string;
+  media: MediaItem[];
+  title: string;
+}) {
+  const photos = media.filter((m) => m.kind === "image");
+  return (
+    <div className="mx-auto w-full max-w-[280px] text-[13px] text-[#111]">
+      <div className="relative overflow-hidden rounded-2xl">
+        <MediaView item={photos[0]} className="aspect-[2/3] w-full" />
+        {photos.length > 1 && (
+          <span className="absolute top-2 right-2 rounded-full bg-black/70 px-2 py-0.5 text-xs text-white">
+            1/{photos.length}
+          </span>
+        )}
+        <span className="absolute top-2 left-2 rounded-full bg-[#e60023] px-3 py-1.5 text-xs font-semibold text-white">Save</span>
+      </div>
+      <div className="space-y-1 px-1 pt-2 dark:text-white">
+        {title.trim() && <p className="line-clamp-2 font-semibold">{title}</p>}
+        {caption ? (
+          <Caption text={caption} className="line-clamp-3 text-neutral-600 dark:text-neutral-300" />
+        ) : (
+          <p className="text-neutral-400">Your description will appear here</p>
+        )}
+        <div className="flex items-center gap-2 pt-1">
+          <Avatar account={account} size={24} />
+          <span className="truncate font-medium">{account.name}</span>
+        </div>
       </div>
     </div>
   );

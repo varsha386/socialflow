@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentUser, getPostDetail, type PostTargetDetail } from "@/lib/data";
 import { PLATFORMS } from "@/lib/platforms";
 import { timeZoneLabel } from "@/lib/timezone";
+import { DeletePostButton } from "../delete-posts";
 import { AutoRefresh, RetryButton, ScheduledActions } from "./post-actions";
 
 export const metadata: Metadata = { title: "Post" };
@@ -65,6 +66,17 @@ export default async function PostDetailPage({ params }: PageProps<"/posts/[id]"
             </Link>
           )}
           {canRetry && <RetryButton postId={post.id} />}
+          {post.status !== "scheduled" && post.status !== "publishing" && (
+            <DeletePostButton
+              postId={post.id}
+              live={post.targets
+                .filter((t) => t.status === "published")
+                .map((t) => ({
+                  account: t.accountName || PLATFORMS.find((p) => p.id === t.platform)!.name,
+                  platform: PLATFORMS.find((p) => p.id === t.platform)!.name,
+                }))}
+            />
+          )}
           {/* A new post copied from this one; this post stays as it is. */}
           <Link href={`/create?from=${post.id}`} className={buttonVariants({ size: "lg", variant: "outline" })}>
             <Copy />

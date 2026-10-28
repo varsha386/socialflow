@@ -3,13 +3,14 @@ import { notFound } from "next/navigation";
 import { Composer, type ComposerInitial } from "@/components/composer/composer";
 import { PageHeader } from "@/components/page-header";
 import { isValidDate } from "@/lib/calendar";
-import { DEFAULT_INSTAGRAM } from "@/lib/post-rules";
+import { DEFAULT_INSTAGRAM, DEFAULT_PINTEREST } from "@/lib/post-rules";
 import {
   getBestTimeSuggestions,
   getCurrentUser,
   getDraft,
   getNextFreeSlot,
   getQueueSlots,
+  getInstagramPostsToday,
   getSocialAccounts,
 } from "@/lib/data";
 
@@ -26,12 +27,13 @@ export default async function CreatePostPage({ searchParams }: PageProps<"/creat
   const postId = typeof post === "string" && UUID.test(post) ? post : null;
   const fromId = !postId && typeof from === "string" && UUID.test(from) ? from : null;
 
-  const [user, allAccounts, draft, original, queueSlots] = await Promise.all([
+  const [user, allAccounts, draft, original, queueSlots, instagramPostsToday] = await Promise.all([
     getCurrentUser(),
     getSocialAccounts(),
     postId ? getDraft(postId) : null,
     fromId ? getDraft(fromId) : null,
     getQueueSlots(),
+    getInstagramPostsToday(),
   ]);
   if ((postId && !draft) || (fromId && !original)) notFound();
 
@@ -58,6 +60,7 @@ export default async function CreatePostPage({ searchParams }: PageProps<"/creat
         customCaptions: draft.customCaptions,
         youtube: draft.youtube,
         instagram: draft.instagram,
+        pinterest: draft.pinterest,
       }
     : original
       ? {
@@ -71,6 +74,7 @@ export default async function CreatePostPage({ searchParams }: PageProps<"/creat
           customCaptions: original.customCaptions,
           youtube: original.youtube,
           instagram: original.instagram,
+          pinterest: original.pinterest,
         }
       : {
           postId: null,
@@ -81,6 +85,7 @@ export default async function CreatePostPage({ searchParams }: PageProps<"/creat
           customCaptions: {},
           youtube: { title: "", privacy: "public" },
           instagram: DEFAULT_INSTAGRAM,
+          pinterest: DEFAULT_PINTEREST,
         };
 
   return (
@@ -90,7 +95,7 @@ export default async function CreatePostPage({ searchParams }: PageProps<"/creat
         description={
           original
             ? "A copy of your earlier post. Change anything you like, then publish or schedule it as a new post."
-            : "Write once, then publish or schedule it everywhere."
+            : "One post (a single photo or video, or a carousel of up to 20) sent to every account you choose. To turn many files into separate posts, use Bulk upload."
         }
       />
       {/* key: start fresh when switching between drafts or copies */}
@@ -103,6 +108,8 @@ export default async function CreatePostPage({ searchParams }: PageProps<"/creat
         suggestedDate={suggestedDate}
         queue={queue}
         bestTimes={bestTimes}
+        instagramPostsToday={instagramPostsToday}
+        pinterestSandbox={process.env.PINTEREST_SANDBOX === "1"}
       />
     </>
   );

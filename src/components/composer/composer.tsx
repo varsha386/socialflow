@@ -19,13 +19,16 @@ import { cn } from "@/lib/utils";
 import { PLATFORMS, type PlatformId } from "@/lib/platforms";
 import {
   CAPTION_LIMITS,
+  INSTAGRAM_POSTS_PER_DAY,
   INSTAGRAM_STORY_MAX_SECONDS,
   YOUTUBE_TITLE_LIMIT,
   checkPost,
   type InstagramOptions,
   type MediaItem,
+  type PinterestOptions,
   type YouTubeOptions,
 } from "@/lib/post-rules";
+import { PinterestOptionsPanel } from "@/components/composer/pinterest-options";
 import { timeZoneLabel, utcToZonedInput } from "@/lib/timezone";
 import type { SocialAccount } from "@/lib/types";
 
@@ -37,6 +40,7 @@ export type ComposerInitial = {
   customCaptions: Partial<Record<PlatformId, string>>;
   youtube: YouTubeOptions;
   instagram: InstagramOptions;
+  pinterest: PinterestOptions;
 };
 
 // The posting queue, for the "Add to queue" button. `next` is the next free
@@ -63,14 +67,18 @@ export function Composer({
   suggestedDate,
   queue,
   bestTimes,
+  instagramPostsToday,
+  pinterestSandbox = false,
 }: {
   userId: string;
+  pinterestSandbox?: boolean; // Pinterest is in its testing mode: Pins are only visible to their owner
   timezone: string;
   suggestedDate?: string; // "YYYY-MM-DD" from the calendar: start with Schedule open for that day
   accounts: SocialAccount[];
   initial: ComposerInitial;
   queue: ComposerQueue;
   bestTimes: ComposerBestTimes;
+  instagramPostsToday: Record<string, number>; // account ID -> posts published in the last 24 hours
 }) {
   const [postId, setPostId] = useState(initial.postId);
   const [selected, setSelected] = useState<string[]>(initial.accountIds);
@@ -79,6 +87,7 @@ export function Composer({
   const [customCaptions, setCustomCaptions] = useState(initial.customCaptions);
   const [youtube, setYoutube] = useState<YouTubeOptions>(initial.youtube);
   const [instagram, setInstagram] = useState<InstagramOptions>(initial.instagram);
+  const [pinterest, setPinterest] = useState<PinterestOptions>(initial.pinterest);
   const [tab, setTab] = useState<"all" | PlatformId>("all");
   const [previewChoice, setPreviewChoice] = useState<PlatformId | null>(null);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
@@ -99,7 +108,33 @@ export function Composer({
     previewChoice && platforms.includes(previewChoice) ? previewChoice : platforms[0] ?? null;
 
   const captionFor = (p: PlatformId) => customCaptions[p] ?? caption;
-  const checks = platforms.map((p) => ({ platform: p, problems: checkPost(p, captionFor(p), media, youtube, instagram) }));
+  // Instagram allows 100 posts per account in 24 hours: block when reached, warn when close.
+  const instagramLimitNotes = accounts
+    .filter((a) => a.platform === "instagram" && selected.includes(a.id))
+    .flatMap((a) => {
+      const used = instagramPostsToday[a.id] ?? 0;
+      const name = a.username ? `@${a.username}` : (a.display_name ?? "This account");
+      if (used >= INSTAGRAM_POSTS_PER_DAY) {
+        return [`${name} has reached Instagram's ${INSTAGRAM_POSTS_PER_DAY} posts in 24 hours. Try again later.`];
+      }
+      if (used >= INSTAGRAM_POSTS_PER_DAY * 0.8) {
+        return [`${name} can post ${INSTAGRAM_POSTS_PER_DAY - used} more times in the next 24 hours.`];
+      }
+      return [];
+    });
+  // Each chosen Pinterest account needs a board.
+  const pinterestAccounts = accounts.filter((a) => a.platform === "pinterest" && selected.includes(a.id));
+  const missingBoards = pinterestAccounts
+    .filter((a) => !pinterest.boards[a.id])
+    .map((a) => (pinterestAccounts.length > 1 ? `Choose a board for ${a.display_name ?? a.username}.` : "Choose a board."));
+  const checks = platforms.map((p) => ({
+    platform: p,
+    problems: [
+      ...checkPost(p, captionFor(p), media, youtube, instagram, pinterest),
+      ...(p === "instagram" ? instagramLimitNotes.filter((n) => n.includes("has reached")) : []),
+      ...(p === "pinterest" ? missingBoards : []),
+    ],
+  }));
 
   function toggleAccount(id: string) {
     setMessage(null);
@@ -119,6 +154,7 @@ export function Composer({
       ),
       youtube,
       instagram,
+      pinterest,
     });
     if (result.postId && result.postId !== postId) {
       setPostId(result.postId);
@@ -221,7 +257,7 @@ export function Composer({
         <CardContent className="py-10 text-center">
           <p className="font-medium">Connect an account first</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            You need at least one Instagram, Facebook or YouTube account to post to.
+            You need at least one connected account to post to.
           </p>
           <Link href="/connections" className={buttonVariants({ className: "mt-4" })}>
             Go to Connections
@@ -451,6 +487,18 @@ export function Composer({
                 )}
               </div>
             ) : null}
+
+            {activeTab === "pinterest" || (activeTab === "all" && platforms.includes("pinterest")) ? (
+              <PinterestOptionsPanel
+                accounts={pinterestAccounts}
+                value={pinterest}
+                onChange={(update) => {
+                  setMessage(null);
+                  setPinterest(update);
+                }}
+                sandbox={pinterestSandbox}
+              />
+            ) : null}
           </CardContent>
         </Card>
 
@@ -475,6 +523,20 @@ export function Composer({
                   </li>
                 ))}
               </ul>
+            )}
+            {/* "Getting close" notes (the "reached" ones already show as problems above). */}
+            {instagramLimitNotes
+              .filter((n) => !n.includes("has reached"))
+              .map((note) => (
+                <p key={note} className="text-xs text-muted-foreground">
+                  Instagram: {note}
+                </p>
+              ))}
+            {platforms.includes("youtube") && (
+              <p className="text-xs text-muted-foreground">
+                YouTube: until Google raises SocialFlow&apos;s quota, only a few videos a day can be uploaded across all
+                users. If an upload fails for this reason, try again tomorrow.
+              </p>
             )}
 
             <div className="flex flex-wrap items-center gap-3 border-t pt-4">
@@ -639,6 +701,7 @@ export function Composer({
             media={media}
             youtube={youtube}
             instagram={instagram}
+            pinterest={pinterest}
           />
         ) : (
           <div className="rounded-2xl border-2 border-dashed px-6 py-16 text-center text-sm text-muted-foreground">

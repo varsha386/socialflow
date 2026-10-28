@@ -5,8 +5,12 @@ import { getNextFreeSlot } from "@/lib/data";
 import { scheduleLimitError } from "@/lib/plan-limits";
 import { createClient } from "@/lib/supabase/server";
 import type { PlatformId } from "@/lib/platforms";
-import type { InstagramOptions, YouTubeOptions } from "@/lib/post-rules";
+import type { InstagramOptions, PinterestOptions, YouTubeOptions } from "@/lib/post-rules";
+import { listPinterestBoards, pinterestApi, type PinterestBoard } from "@/lib/connectors/pinterest";
 import { checkReadyToPublish } from "@/lib/publishing";
+import { getAccessToken } from "@/lib/publishing/tokens";
+import { PublishError } from "@/lib/publishing/types";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { zonedTimeToUtc } from "@/lib/timezone";
 import { POST_SCHEDULED, inngest, type PostScheduledData } from "@/inngest/client";
 
@@ -18,6 +22,7 @@ export type DraftInput = {
   customCaptions: Partial<Record<PlatformId, string>>;
   youtube: YouTubeOptions;
   instagram?: InstagramOptions; // Bulk upload leaves it out: always the feed
+  pinterest?: PinterestOptions; // Bulk upload leaves it out (it has no Pinterest accounts)
 };
 
 export type SaveResult = { postId?: string; error?: string };
@@ -94,7 +99,13 @@ export async function saveDraft(input: DraftInput): Promise<SaveResult> {
               ? { title: input.youtube.title.trim(), privacy: input.youtube.privacy }
               : platform === "instagram" && input.instagram?.format === "story"
                 ? { format: "story" }
-                : {},
+                : platform === "pinterest"
+                  ? {
+                      boardId: input.pinterest?.boards[a.id] ?? null,
+                      title: input.pinterest?.title.trim() ?? "",
+                      link: input.pinterest?.link.trim() ?? "",
+                    }
+                  : {},
         };
       })
     );
@@ -104,6 +115,50 @@ export async function saveDraft(input: DraftInput): Promise<SaveResult> {
   revalidatePath("/posts");
   revalidatePath("/dashboard");
   return { postId };
+}
+
+// The boards of one of the user's Pinterest accounts, for choosing where a Pin goes.
+export async function getPinterestBoards(accountId: string): Promise<{ boards?: PinterestBoard[]; error?: string }> {
+  const supabase = await createClient();
+  // Row Level Security only returns the account if it's this user's.
+  const { data: account } = await supabase
+    .from("social_accounts")
+    .select("id")
+    .eq("id", accountId)
+    .eq("platform", "pinterest")
+    .maybeSingle();
+  if (!account) return { error: "That Pinterest account isn't connected." };
+
+  try {
+    const token = await getAccessToken(createAdminClient(), account.id, "pinterest");
+    return { boards: await listPinterestBoards(token) };
+  } catch (err) {
+    if (!(err instanceof PublishError)) console.error("[pinterest] couldn't load boards:", err);
+    return { error: err instanceof PublishError ? err.message : "Couldn't load your Pinterest boards. Try again." };
+  }
+}
+
+// Makes a new public board on one of the user's Pinterest accounts.
+export async function createPinterestBoard(accountId: string, name: string): Promise<{ board?: PinterestBoard; error?: string }> {
+  const boardName = name.trim();
+  if (!boardName || boardName.length > 50) return { error: "Give the board a name of up to 50 characters." };
+  const supabase = await createClient();
+  const { data: account } = await supabase
+    .from("social_accounts")
+    .select("id")
+    .eq("id", accountId)
+    .eq("platform", "pinterest")
+    .maybeSingle();
+  if (!account) return { error: "That Pinterest account isn't connected." };
+
+  try {
+    const token = await getAccessToken(createAdminClient(), account.id, "pinterest");
+    const board = await pinterestApi<PinterestBoard>("POST", "/boards", token, { name: boardName, privacy: "PUBLIC" });
+    return { board: { id: board.id, name: board.name } };
+  } catch (err) {
+    if (!(err instanceof PublishError)) console.error("[pinterest] couldn't create a board:", err);
+    return { error: err instanceof PublishError ? err.message : "Couldn't create the board. Try again." };
+  }
 }
 
 export async function deleteDraft(postId: string) {

@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
-import { CircleAlert, CircleCheck } from "lucide-react";
+import Link from "next/link";
+import { CircleAlert, CircleCheck, Plug, Plus } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { PlatformBadge } from "@/components/platform-badge";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
+import { getConnector } from "@/lib/connectors";
 import { getSocialAccounts } from "@/lib/data";
-import { PLATFORMS, type ProviderId } from "@/lib/platforms";
+import { PLATFORMS, type PlatformId, type ProviderId } from "@/lib/platforms";
 import { FREE_LIMITS } from "@/lib/plans";
+import { AddAccount } from "./add-account";
 import { DisconnectButton } from "./disconnect-button";
 
 export const metadata: Metadata = { title: "Connections" };
@@ -15,9 +18,13 @@ export const metadata: Metadata = { title: "Connections" };
 const PROVIDER_NAMES: Record<ProviderId, string> = {
   meta: "Facebook and Instagram",
   youtube: "YouTube",
+  bluesky: "Bluesky",
+  threads: "Threads",
+  linkedin: "LinkedIn",
+  pinterest: "Pinterest",
 };
 
-// Turns the ?connected=… or ?error=… left by /api/connect into a message.
+// Turns the ?connected=… or ?error=… left by /api/connect (or the Bluesky form) into a message.
 function resultMessage(params: Record<string, string | string[] | undefined>) {
   const provider = String(params.provider ?? params.connected ?? "") as ProviderId;
   const name = PROVIDER_NAMES[provider] ?? "that account";
@@ -29,6 +36,12 @@ function resultMessage(params: Record<string, string | string[] | undefined>) {
       ? ` ${skipped} more ${skipped === 1 ? "wasn't" : "weren't"} added, because the Free plan includes ${FREE_LIMITS.accounts} accounts. Upgrade to Pro on the Plan page for unlimited.`
       : "";
     if (provider === "youtube") return { ok: true, text: `Your YouTube channel is connected.${limitNote}` };
+    if (provider === "bluesky") return { ok: true, text: "Your Bluesky account is connected." };
+    if (provider === "threads") return { ok: true, text: `Your Threads profile is connected.${limitNote}` };
+    if (provider === "pinterest") return { ok: true, text: `Your Pinterest account is connected.${limitNote}` };
+    if (provider === "linkedin") {
+      return { ok: true, text: `Your LinkedIn profile is connected. LinkedIn logins last 60 days, then you reconnect.${limitNote}` };
+    }
     return {
       ok: true,
       text: `Connected ${count} ${count === 1 ? "account" : "accounts"} from Facebook and Instagram.${limitNote}`,
@@ -64,13 +77,32 @@ function resultMessage(params: Record<string, string | string[] | undefined>) {
 export default async function ConnectionsPage({ searchParams }: PageProps<"/connections">) {
   const [accounts, params] = await Promise.all([getSocialAccounts(), searchParams]);
   const message = resultMessage(params);
+  // ?add=1 shows the platform list; ?add=bluesky shows Bluesky's form.
+  const add = typeof params.add === "string" ? params.add : null;
+  const step = add && PLATFORMS.some((p) => p.id === add) ? (add as PlatformId) : add ? "pick" : null;
+
+  // Platforms whose keys aren't in the app's settings yet (e.g. waiting for the platform's
+  // approval) are shown as "coming soon" instead of a Connect button that would fail.
+  const notReady = PLATFORMS.filter((p) => {
+    if (p.connectWith !== "oauth") return false;
+    const connector = getConnector(p.provider);
+    return !connector || connector.requiredEnv.some((name) => !process.env[name]);
+  }).map((p) => p.id);
+
+  // Accounts in the order platforms are listed, so each platform's accounts sit together.
+  const order = (id: PlatformId) => PLATFORMS.findIndex((p) => p.id === id);
+  const sorted = [...accounts].sort((a, b) => order(a.platform) - order(b.platform));
 
   return (
     <>
-      <PageHeader
-        title="Connections"
-        description="Connect the accounts you want to post to."
-      />
+      <PageHeader title="Connections" description="The accounts SocialFlow can post to.">
+        {!step && (
+          <Link href="/connections?add=1" className={buttonVariants({ size: "lg" })}>
+            <Plus />
+            Add account
+          </Link>
+        )}
+      </PageHeader>
 
       {message && (
         <div
@@ -86,73 +118,75 @@ export default async function ConnectionsPage({ searchParams }: PageProps<"/conn
         </div>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {PLATFORMS.map((platform) => {
-          const connected = accounts.filter((a) => a.platform === platform.id);
-          const isConnected = connected.some((a) => a.status === "connected");
+      {step && <AddAccount step={step} notReady={notReady} />}
 
-          return (
-            <Card key={platform.id}>
-              <CardContent className="flex h-full flex-col gap-4">
-                <div className="flex items-center gap-3">
-                  <PlatformBadge platform={platform} />
-                  <div className="min-w-0">
-                    <p className="font-medium">{platform.name}</p>
-                    {isConnected ? (
-                      <Badge className="mt-1">Connected</Badge>
+      {sorted.length === 0 ? (
+        !step && (
+          <div className="flex flex-col items-center rounded-3xl border-2 border-dashed bg-card px-6 py-16 text-center">
+            <span className="mb-4 flex size-12 items-center justify-center rounded-full bg-accent text-accent-foreground">
+              <Plug className="size-6" />
+            </span>
+            <h2 className="font-medium">No accounts yet</h2>
+            <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+              Add the social accounts you want to post to. You can connect as many or as few as you like.
+            </p>
+            <Link href="/connections?add=1" className={buttonVariants({ className: "mt-4" })}>
+              <Plus />
+              Add account
+            </Link>
+          </div>
+        )
+      ) : (
+        <Card className="gap-0 py-0">
+          <ul className="divide-y">
+            {sorted.map((a) => {
+              const platform = PLATFORMS.find((p) => p.id === a.platform)!;
+              const name = a.display_name ?? a.username ?? platform.name;
+              const reconnectHref =
+                platform.connectWith === "oauth" ? `/api/connect/${platform.provider}` : `/connections?add=${platform.id}`;
+              return (
+                <li key={a.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
+                  <span className="relative shrink-0">
+                    {a.avatar_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={a.avatar_url} alt="" referrerPolicy="no-referrer" className="size-10 rounded-full object-cover" />
                     ) : (
-                      <Badge variant="outline" className="mt-1">
-                        Not connected
-                      </Badge>
+                      <span className="block size-10 rounded-full bg-accent" />
                     )}
+                    <span className="absolute -right-1 -bottom-1 origin-bottom-right scale-50">
+                      <PlatformBadge platform={platform} />
+                    </span>
+                  </span>
+                  <div className="min-w-0 flex-1 text-sm">
+                    <p className="truncate font-medium">{name}</p>
+                    <p className="truncate text-muted-foreground">
+                      {platform.name}
+                      {a.username && ` · @${a.username}`}
+                    </p>
                   </div>
-                </div>
-
-                {connected.length > 0 ? (
-                  <ul className="space-y-2">
-                    {connected.map((a) => {
-                      const name = a.display_name ?? a.username ?? platform.name;
-                      return (
-                        <li key={a.id} className="flex items-center gap-3 rounded-xl bg-muted px-3 py-2">
-                          {a.avatar_url ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={a.avatar_url} alt="" referrerPolicy="no-referrer" className="size-8 rounded-full object-cover" />
-                          ) : (
-                            <span className="size-8 rounded-full bg-accent" />
-                          )}
-                          <div className="min-w-0 flex-1 text-sm">
-                            <p className="truncate font-medium">{name}</p>
-                            {a.username && <p className="truncate text-muted-foreground">@{a.username}</p>}
-                            {a.status !== "connected" && (
-                              <p className="text-destructive">Needs reconnecting</p>
-                            )}
-                          </div>
-                          <DisconnectButton accountId={a.id} name={name} />
-                        </li>
-                      );
-                    })}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-muted-foreground">{platform.description}</p>
-                )}
-
-                {/* A plain link (not <Link>) because it leaves the site for Google/Facebook. */}
-                <a
-                  href={`/api/connect/${platform.provider}`}
-                  className={buttonVariants({ variant: isConnected ? "outline" : "default", className: "mt-auto w-full" })}
-                >
-                  {isConnected ? "Connect another" : `Connect ${platform.name}`}
-                </a>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      <p className="mt-6 text-sm text-muted-foreground">
-        Facebook and Instagram connect together: one Facebook login adds your Pages and the Instagram
-        accounts linked to them.
-      </p>
+                  {a.status === "connected" ? (
+                    <Badge>Connected</Badge>
+                  ) : (
+                    <>
+                      <Badge variant="destructive">Needs reconnecting</Badge>
+                      {platform.connectWith === "oauth" ? (
+                        <a href={reconnectHref} className={buttonVariants({ size: "sm", variant: "outline" })}>
+                          Reconnect
+                        </a>
+                      ) : (
+                        <Link href={reconnectHref} className={buttonVariants({ size: "sm", variant: "outline" })}>
+                          Reconnect
+                        </Link>
+                      )}
+                    </>
+                  )}
+                  <DisconnectButton accountId={a.id} name={name} />
+                </li>
+              );
+            })}
+          </ul>
+        </Card>
+      )}
     </>
   );
 }

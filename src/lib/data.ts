@@ -7,7 +7,14 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { mediaUrl } from "@/lib/media";
 import type { PlatformId } from "@/lib/platforms";
-import { DEFAULT_INSTAGRAM, type InstagramOptions, type MediaItem, type YouTubeOptions } from "@/lib/post-rules";
+import {
+  DEFAULT_INSTAGRAM,
+  DEFAULT_PINTEREST,
+  type InstagramOptions,
+  type MediaItem,
+  type PinterestOptions,
+  type YouTubeOptions,
+} from "@/lib/post-rules";
 import { engagementScore, rankBestTimes, type BestTimes } from "@/lib/best-time";
 import type { BioLink, BioPage } from "@/lib/bio";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -149,6 +156,7 @@ export async function getDraft(postId: string) {
   const customCaptions: Partial<Record<PlatformId, string>> = {};
   let youtube: YouTubeOptions = { title: "", privacy: "public" };
   let instagram: InstagramOptions = DEFAULT_INSTAGRAM;
+  let pinterest: PinterestOptions = DEFAULT_PINTEREST;
   for (const t of post.post_targets) {
     const platform = t.social_accounts?.platform;
     if (!platform) continue;
@@ -160,6 +168,15 @@ export async function getDraft(postId: string) {
       };
     }
     if (platform === "instagram" && t.options.format === "story") instagram = { format: "story" };
+    if (platform === "pinterest") {
+      pinterest = {
+        title: String(t.options.title ?? ""),
+        link: String(t.options.link ?? ""),
+        boards: t.options.boardId
+          ? { ...pinterest.boards, [t.social_account_id]: String(t.options.boardId) }
+          : pinterest.boards,
+      };
+    }
   }
 
   return {
@@ -171,6 +188,7 @@ export async function getDraft(postId: string) {
     customCaptions,
     youtube,
     instagram,
+    pinterest,
   };
 }
 
@@ -188,10 +206,21 @@ export type PostListItem = {
   mediaCount: number;
 };
 
-// All of the user's posts, newest first, for the Posts page.
-export async function getPosts(): Promise<PostListItem[]> {
+// The tabs on the Posts page, and which post statuses each one shows.
+// "Failed" includes partly published posts, since both need a retry.
+export const POST_TABS = {
+  all: { label: "All", statuses: null },
+  draft: { label: "Drafts", statuses: ["draft"] },
+  scheduled: { label: "Scheduled", statuses: ["scheduled", "publishing"] },
+  published: { label: "Published", statuses: ["published"] },
+  failed: { label: "Failed", statuses: ["failed", "partially_published"] },
+} as const satisfies Record<string, { label: string; statuses: readonly PostStatus[] | null }>;
+export type PostTab = keyof typeof POST_TABS;
+
+// The user's posts on one tab, newest first, for the Posts page.
+export async function getPosts(tab: PostTab = "all"): Promise<PostListItem[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("posts")
     .select(
       `id, caption, status, scheduled_at, published_at, updated_at,
@@ -200,6 +229,9 @@ export async function getPosts(): Promise<PostListItem[]> {
     )
     .order("updated_at", { ascending: false })
     .limit(100);
+  const statuses = POST_TABS[tab].statuses;
+  if (statuses) query = query.in("status", [...statuses]);
+  const { data, error } = await query;
   if (error) throw new Error(`Couldn't load posts: ${error.message}`);
 
   type Row = {
@@ -231,6 +263,49 @@ export async function getPosts(): Promise<PostListItem[]> {
     };
   });
 }
+
+// Posts published by each Instagram account in the last 24 hours (Instagram allows 100).
+export async function getInstagramPostsToday(): Promise<Record<string, number>> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("post_targets")
+    .select("social_account_id, social_accounts!inner ( platform )")
+    .eq("status", "published")
+    .eq("social_accounts.platform", "instagram")
+    .gte("published_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+    .limit(1000);
+  const counts: Record<string, number> = {};
+  for (const row of (data ?? []) as { social_account_id: string }[]) {
+    counts[row.social_account_id] = (counts[row.social_account_id] ?? 0) + 1;
+  }
+  return counts;
+}
+
+// How many posts are on each Posts tab (for the tab labels).
+export async function getPostCounts(): Promise<Record<PostTab, number>> {
+  const supabase = await createClient();
+  const tabs = Object.keys(POST_TABS) as PostTab[];
+  const counts = await Promise.all(
+    tabs.map(async (tab) => {
+      let query = supabase.from("posts").select("id", { count: "exact", head: true });
+      const statuses = POST_TABS[tab].statuses;
+      if (statuses) query = query.in("status", [...statuses]);
+      const { count } = await query;
+      return [tab, count ?? 0] as const;
+    })
+  );
+  return Object.fromEntries(counts) as Record<PostTab, number>;
+}
+
+// Failed or partly published posts, for the red count in the menu.
+export const getFailedPostCount = cache(async (): Promise<number> => {
+  const supabase = await createClient();
+  const { count } = await supabase
+    .from("posts")
+    .select("id", { count: "exact", head: true })
+    .in("status", [...POST_TABS.failed.statuses]);
+  return count ?? 0;
+});
 
 export type PostTargetDetail = {
   id: string;

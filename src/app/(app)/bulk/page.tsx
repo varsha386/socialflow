@@ -12,12 +12,13 @@ export default async function BulkPage() {
     <>
       <PageHeader
         title="Bulk upload"
-        description="Upload many photos and videos, and schedule them as separate posts."
+        description="Many files at once: each photo or video becomes its own separate post, spaced out on a schedule. For one post with several photos (a carousel), use Create post."
       />
       <BulkScheduler
         userId={user.id}
         timezone={user.timezone}
-        accounts={accounts.filter((a) => a.status === "connected")}
+        // Pinterest is left out: each Pin needs a board, chosen on Create post.
+        accounts={accounts.filter((a) => a.status === "connected" && a.platform !== "pinterest")}
       />
     </>
   );

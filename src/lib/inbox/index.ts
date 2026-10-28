@@ -36,7 +36,8 @@ export async function syncUserComments(userId: string) {
     .from("social_accounts")
     .select("id, platform, platform_account_id, username")
     .eq("user_id", userId)
-    .eq("status", "connected");
+    .eq("status", "connected")
+    .in("platform", ["facebook", "instagram", "youtube"]); // Bluesky comments aren't supported yet
 
   for (const account of (accounts ?? []) as Account[]) {
     const { data: rows } = await admin

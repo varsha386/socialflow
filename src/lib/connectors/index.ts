@@ -2,17 +2,25 @@ import "server-only";
 import { encrypt } from "@/lib/crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { ProviderId } from "@/lib/platforms";
+import { linkedinConnector } from "./linkedin";
 import { metaConnector } from "./meta";
+import { pinterestConnector } from "./pinterest";
+import { threadsConnector } from "./threads";
 import type { ConnectedAccount, Connector } from "./types";
 import { youtubeConnector } from "./youtube";
 
-export const CONNECTORS: Record<ProviderId, Connector> = {
+// Services connected through a login window. (Bluesky connects with an app password
+// on the Connections page instead: see src/app/(app)/connections/actions.ts.)
+export const CONNECTORS: Record<Exclude<ProviderId, "bluesky">, Connector> = {
   youtube: youtubeConnector,
   meta: metaConnector,
+  threads: threadsConnector,
+  linkedin: linkedinConnector,
+  pinterest: pinterestConnector,
 };
 
 export function getConnector(id: string): Connector | null {
-  return id in CONNECTORS ? CONNECTORS[id as ProviderId] : null;
+  return id in CONNECTORS ? CONNECTORS[id as keyof typeof CONNECTORS] : null;
 }
 
 export function missingEnv(connector: Connector): string[] {
