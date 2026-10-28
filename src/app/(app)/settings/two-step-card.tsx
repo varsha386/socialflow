@@ -31,8 +31,8 @@ export function TwoStepCard({ enabled }: { enabled: boolean }) {
     }
     const { data, error: enrollError } = await supabase.auth.mfa.enroll({
       factorType: "totp",
-      friendlyName: "SocialFlow authenticator",
-      issuer: "SocialFlow",
+      friendlyName: "Ripple authenticator",
+      issuer: "Ripple",
     });
     setBusy(false);
     if (enrollError || !data) {

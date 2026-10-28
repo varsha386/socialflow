@@ -5,14 +5,14 @@ import { deletePost, type PlatformDeleteResult } from "@/lib/publishing/delete";
 import { createClient } from "@/lib/supabase/server";
 
 export type DeletePostsResult = {
-  removed: number; // posts removed from SocialFlow
+  removed: number; // posts removed from Ripple
   kept: { postId: string; reason: string; results: PlatformDeleteResult[] }[]; // left in place, with why
   error?: string;
 };
 
 const MAX_AT_ONCE = 25;
 
-// Deletes posts from SocialFlow, and with `fromPlatforms`, from the platforms too.
+// Deletes posts from Ripple, and with `fromPlatforms`, from the platforms too.
 export async function deletePosts(postIds: string[], fromPlatforms: boolean): Promise<DeletePostsResult> {
   const supabase = await createClient();
   const {

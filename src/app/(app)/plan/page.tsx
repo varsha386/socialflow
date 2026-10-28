@@ -22,8 +22,8 @@ const FEATURES: { label: string; free: string | boolean; pro: string | boolean }
 ];
 
 // Payments aren't set up yet, so upgrading starts as an email.
-const upgradeLink = `mailto:${SITE.contactEmail}?subject=${encodeURIComponent("Upgrade to SocialFlow Pro")}&body=${encodeURIComponent(
-  "Hi! I'd like to upgrade my SocialFlow account to Pro."
+const upgradeLink = `mailto:${SITE.contactEmail}?subject=${encodeURIComponent("Upgrade to Ripple Pro")}&body=${encodeURIComponent(
+  "Hi! I'd like to upgrade my Ripple account to Pro."
 )}`;
 
 export default async function PlanPage() {
@@ -56,7 +56,7 @@ export default async function PlanPage() {
               )}
             </CardTitle>
             <CardDescription>
-              {pro ? "Everything is unlimited. Thank you for supporting SocialFlow!" : "Months reset on the 1st, in your time zone."}
+              {pro ? "Everything is unlimited. Thank you for supporting Ripple!" : "Months reset on the 1st, in your time zone."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">

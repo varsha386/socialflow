@@ -15,7 +15,7 @@ const features = [
   {
     icon: CalendarClock,
     title: "Schedule ahead",
-    text: "Pick a date and time, and SocialFlow publishes for you. See it all in a calendar.",
+    text: "Pick a date and time, and Ripple publishes for you. See it all in a calendar.",
   },
   {
     icon: ChartColumn,

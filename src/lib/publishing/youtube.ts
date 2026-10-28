@@ -6,9 +6,13 @@ import { PublishError, type PublishJob, type PublishResult } from "./types";
 // Each upload costs 1,600 of the project's 10,000 daily quota units (about 6 uploads a day).
 // Docs: https://developers.google.com/youtube/v3/guides/using_resumable_upload_protocol
 export async function publishToYouTube(job: PublishJob): Promise<PublishResult> {
-  const { accessToken: token, caption, media, youtube } = job;
+  const { accessToken: token, media, youtube } = job;
   const video = media.find((m) => m.kind === "video");
   if (!video) throw new PublishError("YouTube needs a video.");
+  // YouTube decides what's a Short from the video's shape and length; #Shorts just helps it along.
+  const addTag =
+    youtube.format === "short" && !/#shorts\b/i.test(`${youtube.title} ${job.caption}`) && job.caption.length <= 4990;
+  const caption = addTag ? `${job.caption}${job.caption.trim() ? "\n\n" : ""}#Shorts` : job.caption;
 
   // 1. Download the video from our storage.
   const fileRes = await fetch(video.url);
@@ -45,7 +49,8 @@ export async function publishToYouTube(job: PublishJob): Promise<PublishResult> 
   if (!upload.ok) throw await youtubeError(upload);
   const { id } = (await upload.json()) as { id: string };
 
-  return { externalId: id, url: `https://www.youtube.com/watch?v=${id}` };
+  const url = youtube.format === "short" ? `https://www.youtube.com/shorts/${id}` : `https://www.youtube.com/watch?v=${id}`;
+  return { externalId: id, url };
 }
 
 async function youtubeError(res: Response): Promise<PublishError> {
@@ -60,7 +65,7 @@ async function youtubeError(res: Response): Promise<PublishError> {
   }
   if (res.status === 401) return new PublishError("YouTube needs you to reconnect your channel.", { reconnect: true });
   if (reason === "quotaExceeded" || reason === "uploadLimitExceeded") {
-    return new PublishError("YouTube's daily upload limit for SocialFlow has been reached. Try again tomorrow.");
+    return new PublishError("YouTube's daily upload limit for Ripple has been reached. Try again tomorrow.");
   }
   if (reason === "youtubeSignupRequired") return new PublishError("This Google account needs a YouTube channel first.");
   return new PublishError(message ? `YouTube: ${message}` : `YouTube returned error ${res.status}.`);

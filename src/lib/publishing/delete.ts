@@ -9,7 +9,7 @@ import { graph } from "./graph";
 import { getAccessToken } from "./tokens";
 import { PublishError } from "./types";
 
-// Deletes posts: from SocialFlow, and optionally from the platforms they went out to.
+// Deletes posts: from Ripple, and optionally from the platforms they went out to.
 // Docs: Facebook/Instagram (Graph API DELETE /{id}; Instagram needs instagram_manage_contents),
 // YouTube videos.delete, Bluesky deletePost, Threads DELETE /{id} (needs threads_delete),
 // LinkedIn DELETE /rest/posts/{urn}, Pinterest DELETE /v5/pins/{id}.
@@ -65,7 +65,7 @@ async function deleteOnPlatform(platform: PlatformId, externalId: string, accoun
 }
 
 // Deletes one post. With `fromPlatforms`, each published copy is deleted first; the post
-// is only removed from SocialFlow if every one of those succeeded, so nothing is lost silently.
+// is only removed from Ripple if every one of those succeeded, so nothing is lost silently.
 export async function deletePost(postId: string, userId: string, fromPlatforms: boolean): Promise<DeleteOutcome & { error?: string }> {
   const admin = createAdminClient();
   const { data } = await admin
@@ -112,6 +112,6 @@ export async function deletePost(postId: string, userId: string, fromPlatforms: 
   }
 
   const { error } = await admin.from("posts").delete().eq("id", postId).eq("user_id", userId);
-  if (error) return { removed: false, results, error: "Couldn't remove it from SocialFlow. Try again." };
+  if (error) return { removed: false, results, error: "Couldn't remove it from Ripple. Try again." };
   return { removed: true, results };
 }

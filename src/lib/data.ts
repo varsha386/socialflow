@@ -8,8 +8,10 @@ import { createClient } from "@/lib/supabase/server";
 import { mediaUrl } from "@/lib/media";
 import type { PlatformId } from "@/lib/platforms";
 import {
+  DEFAULT_FACEBOOK,
   DEFAULT_INSTAGRAM,
   DEFAULT_PINTEREST,
+  type FacebookOptions,
   type InstagramOptions,
   type MediaItem,
   type PinterestOptions,
@@ -156,6 +158,7 @@ export async function getDraft(postId: string) {
   const customCaptions: Partial<Record<PlatformId, string>> = {};
   let youtube: YouTubeOptions = { title: "", privacy: "public" };
   let instagram: InstagramOptions = DEFAULT_INSTAGRAM;
+  let facebook: FacebookOptions = DEFAULT_FACEBOOK;
   let pinterest: PinterestOptions = DEFAULT_PINTEREST;
   for (const t of post.post_targets) {
     const platform = t.social_accounts?.platform;
@@ -165,9 +168,11 @@ export async function getDraft(postId: string) {
       youtube = {
         title: String(t.options.title ?? ""),
         privacy: (t.options.privacy as YouTubeOptions["privacy"]) ?? "public",
+        format: t.options.format === "short" ? "short" : "video",
       };
     }
     if (platform === "instagram" && t.options.format === "story") instagram = { format: "story" };
+    if (platform === "facebook" && t.options.format === "story") facebook = { format: "story" };
     if (platform === "pinterest") {
       pinterest = {
         title: String(t.options.title ?? ""),
@@ -188,6 +193,7 @@ export async function getDraft(postId: string) {
     customCaptions,
     youtube,
     instagram,
+    facebook,
     pinterest,
   };
 }

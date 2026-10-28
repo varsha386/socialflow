@@ -78,7 +78,7 @@ export default async function InboxPage({ searchParams }: PageProps<"/inbox">) {
           </h2>
           <p className="mt-1 max-w-sm text-sm text-muted-foreground">
             {threads.length === 0
-              ? "Comments on posts you publish with SocialFlow will appear here. Click Refresh to check now."
+              ? "Comments on posts you publish with Ripple will appear here. Click Refresh to check now."
               : "No comments match these filters."}
           </p>
         </div>

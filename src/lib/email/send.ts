@@ -8,7 +8,7 @@ export type Email = { to: string; subject: string; text: string; html: string };
 
 // Until a domain is verified in Resend, only its test address can send,
 // and only to the Resend account owner's own email.
-const DEFAULT_FROM = "SocialFlow <onboarding@resend.dev>";
+const DEFAULT_FROM = "Ripple <onboarding@resend.dev>";
 
 // The site's address, for links in emails.
 export function siteUrl() {
