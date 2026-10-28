@@ -21,7 +21,7 @@ const SCOPES = [
   "instagram_manage_comments", // read and reply to Instagram comments (Inbox)
   "read_insights", // Facebook post views (Analytics)
   "instagram_manage_insights", // Instagram post and Reel views (Analytics)
-  "instagram_manage_contents", // delete Instagram posts made through SocialFlow (Posts > Delete)
+  "instagram_manage_contents", // delete Instagram posts made through Ripple (Posts > Delete)
 ];
 
 type GraphError = { error?: { message: string } };

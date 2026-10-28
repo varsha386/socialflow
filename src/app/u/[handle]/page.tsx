@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const page = await load(params);
   if (!page) return { title: "Page not found" };
   return {
-    // `absolute` skips the "· SocialFlow" ending: this is the person's own page.
+    // `absolute` skips the "· Ripple" ending: this is the person's own page.
     title: { absolute: page.title || "Links" },
     description: page.bio || undefined,
   };
@@ -37,7 +37,7 @@ export default async function PublicBioPage({ params }: Props) {
       <footer className="pb-8 text-center text-xs text-muted-foreground">
         Made with{" "}
         <Link href="/" className="font-medium hover:text-foreground">
-          SocialFlow
+          Ripple
         </Link>
       </footer>
     </div>

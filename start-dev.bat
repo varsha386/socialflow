@@ -1,9 +1,9 @@
 @echo off
-REM Starts SocialFlow on your computer at https://localhost:3000
+REM Starts Ripple on your computer at https://localhost:3000
 REM (https, because Threads and Meta only accept https login addresses)
 REM Double-click this file, or run "start-dev.bat" in a terminal. Press Ctrl+C to stop.
 
-title SocialFlow dev server
+title Ripple dev server
 cd /d "%~dp0"
 
 where node >nul 2>nul
@@ -27,12 +27,12 @@ if not exist "node_modules" (
 
 REM The Inngest Dev Server runs scheduled posts on this computer.
 REM It opens in its own window; its dashboard is at http://localhost:8288
-start "SocialFlow scheduler (Inngest)" cmd /k "npx --yes inngest-cli@latest dev -u https://localhost:3000/api/inngest --no-discovery"
+start "Ripple scheduler (Inngest)" cmd /k "npx --yes inngest-cli@latest dev -u https://localhost:3000/api/inngest --no-discovery"
 
 echo.
-echo Starting SocialFlow... the browser will open at https://localhost:3000
+echo Starting Ripple... the browser will open at https://localhost:3000
 echo The first page load can take a minute while it compiles.
-echo Scheduled posts run in the second window ("SocialFlow scheduler").
+echo Scheduled posts run in the second window ("Ripple scheduler").
 echo Press Ctrl+C to stop the server, and close both windows when you're done.
 echo.
 

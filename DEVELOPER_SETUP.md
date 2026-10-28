@@ -1,8 +1,8 @@
 # Developer setup
 
-How to get SocialFlow running on your computer and work on it together through GitHub.
+How to get Ripple running on your computer and work on it together through GitHub.
 
-- **Who this is for:** the two SocialFlow developers, on Windows.
+- **Who this is for:** the two Ripple developers, on Windows.
 - **Setup:** we share **one Supabase project** (the same one the live site uses), and we work on **branches with pull requests**.
 
 > ⚠️ **This repository is public.** Never commit `.env.local`, keys, passwords or tokens. They're already ignored by Git, so don't force-add them, and don't paste them into issues, pull requests or commit messages.
@@ -32,7 +32,7 @@ The repository owner (Varsha) does these steps once for each new developer.
 | 2 | **GitHub** → **Settings → Branches → Add branch ruleset** | Target `main`, then turn on **Require a pull request before merging** with **1 required approval**. This stops anyone (including you) from pushing straight to the live site. |
 | 3 | **Send `.env.local` privately** | Send the file through a private chat or a password manager, **not** email or GitHub. It contains the secret key and the token encryption key, which must be identical for everyone. |
 | 4 | **Google Cloud** → Google Auth Platform → **Audience → Test users** | Add the developer's Gmail, so they can connect a YouTube channel. |
-| 5 | **Meta for Developers** → SocialFlow app → **App roles → Roles → Add people** | Add them as **Developer** (can see app settings) or **Tester** (can only log in). They accept at developers.facebook.com/requests. |
+| 5 | **Meta for Developers** → Ripple app → **App roles → Roles → Add people** | Add them as **Developer** (can see app settings) or **Tester** (can only log in). They accept at developers.facebook.com/requests. |
 | 6 | **Supabase** → Organization → **Team → Invite** *(optional)* | Lets them open the dashboard and SQL Editor. Give **Developer** access. |
 | 7 | **Inngest** → Settings → **Members** *(optional)* | Lets them see scheduled jobs on the live site. |
 
@@ -153,8 +153,8 @@ It opens two windows:
 
 | Window | What it is | Address |
 |---|---|---|
-| **SocialFlow dev server** | The app | https://localhost:3000 |
-| **SocialFlow scheduler (Inngest)** | Runs scheduled posts and background jobs on your computer | http://localhost:8288 |
+| **Ripple dev server** | The app | https://localhost:3000 |
+| **Ripple scheduler (Inngest)** | Runs scheduled posts and background jobs on your computer | http://localhost:8288 |
 
 The app runs on **https** because Threads and Meta only accept https login addresses. To avoid a browser warning, make a certificate once with [mkcert](https://github.com/FiloSottile/mkcert) (`winget install FiloSottile.mkcert`), from the project folder:
 
@@ -291,7 +291,7 @@ When unsure, ask the other developer before choosing.
 
 ### 4.7 Who works on what
 
-- Agree on who does which feature before starting, so you don't edit the same files at the same time. The planned features are in the *SocialFlow Feature Roadmap* Word document, which the owner shares (it is not in this repository).
+- Agree on who does which feature before starting, so you don't edit the same files at the same time. The planned features are in the *Ripple Feature Roadmap* Word document, which the owner shares (it is not in this repository).
 - Keep pull requests small (one feature or fix each). They're easier to review and less likely to conflict.
 
 ---
@@ -372,7 +372,7 @@ The [README](README.md) explains the architecture and features.
 | `Port 3000 is in use` | Another copy is running. Close it, or run `Get-NetTCPConnection -LocalPort 3000 -State Listen \| ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }` |
 | Scheduler window shows errors, or port 8288 is in use | Close all scheduler windows, run `taskkill /IM inngest.exe /F`, then start again. |
 | Changes to `.env.local` don't take effect | Stop the app and start it again. |
-| "SocialFlow can't reach the login service" | `.env.local` is missing, in the wrong folder, or has a cut-off key. |
+| "Ripple can't reach the login service" | `.env.local` is missing, in the wrong folder, or has a cut-off key. |
 | Connected accounts say "Needs reconnecting" right after setup | Your `TOKEN_ENCRYPTION_KEY` differs from the owner's. Copy it exactly. |
 | `relation "public.…" does not exist` in the SQL Editor | You're in the wrong Supabase project. Check the address bar shows `elcquybhujocfdvindsq`. |
 | Facebook shows **"App not active"** | The Meta app is blocked or you're not in its App roles. Ask the owner to check the Meta dashboard. |

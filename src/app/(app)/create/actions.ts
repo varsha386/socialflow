@@ -5,7 +5,7 @@ import { getNextFreeSlot } from "@/lib/data";
 import { scheduleLimitError } from "@/lib/plan-limits";
 import { createClient } from "@/lib/supabase/server";
 import type { PlatformId } from "@/lib/platforms";
-import type { InstagramOptions, PinterestOptions, YouTubeOptions } from "@/lib/post-rules";
+import type { FacebookOptions, InstagramOptions, PinterestOptions, YouTubeOptions } from "@/lib/post-rules";
 import { listPinterestBoards, pinterestApi, type PinterestBoard } from "@/lib/connectors/pinterest";
 import { checkReadyToPublish } from "@/lib/publishing";
 import { getAccessToken } from "@/lib/publishing/tokens";
@@ -22,6 +22,7 @@ export type DraftInput = {
   customCaptions: Partial<Record<PlatformId, string>>;
   youtube: YouTubeOptions;
   instagram?: InstagramOptions; // Bulk upload leaves it out: always the feed
+  facebook?: FacebookOptions; // Bulk upload leaves it out: always the feed
   pinterest?: PinterestOptions; // Bulk upload leaves it out (it has no Pinterest accounts)
 };
 
@@ -96,8 +97,9 @@ export async function saveDraft(input: DraftInput): Promise<SaveResult> {
           custom_caption: input.customCaptions[platform] ?? null,
           options:
             platform === "youtube"
-              ? { title: input.youtube.title.trim(), privacy: input.youtube.privacy }
-              : platform === "instagram" && input.instagram?.format === "story"
+              ? { title: input.youtube.title.trim(), privacy: input.youtube.privacy, format: input.youtube.format ?? "video" }
+              : (platform === "instagram" && input.instagram?.format === "story") ||
+                  (platform === "facebook" && input.facebook?.format === "story")
                 ? { format: "story" }
                 : platform === "pinterest"
                   ? {

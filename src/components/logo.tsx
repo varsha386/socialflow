@@ -7,7 +7,7 @@ export function Logo() {
       <span className="flex size-8 items-center justify-center rounded-xl bg-primary text-primary-foreground">
         <Waves className="size-5" />
       </span>
-      SocialFlow
+      Ripple
     </Link>
   );
 }

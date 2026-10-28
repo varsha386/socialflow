@@ -36,12 +36,12 @@ export async function pinterestApi<T>(method: "GET" | "POST" | "DELETE", path: s
   if (!res.ok) {
     if (res.status === 401) throw new PublishError("Pinterest needs you to reconnect this account.", { reconnect: true });
     if (res.status === 403) {
-      throw new PublishError("SocialFlow doesn't have permission to do this. Reconnect Pinterest and allow everything it asks for.", {
+      throw new PublishError("Ripple doesn't have permission to do this. Reconnect Pinterest and allow everything it asks for.", {
         reconnect: true,
       });
     }
     if (res.status === 404) throw new PublishError("Pinterest couldn't find it. It may have been deleted.");
-    if (res.status === 429) throw new PublishError("Pinterest's limit for SocialFlow has been reached. Try again later.");
+    if (res.status === 429) throw new PublishError("Pinterest's limit for Ripple has been reached. Try again later.");
     throw new PublishError(data.message ? `Pinterest: ${data.message}` : `Pinterest returned error ${res.status}.`);
   }
   return data;

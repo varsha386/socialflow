@@ -1,4 +1,4 @@
-// The social platforms SocialFlow can post to.
+// The social platforms Ripple can post to.
 // `color` is each platform's brand color, used for small logo badges.
 // `provider` is the login service used to connect it: Facebook and Instagram
 // both connect through one Meta login.

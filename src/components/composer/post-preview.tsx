@@ -3,9 +3,11 @@
 import { Bookmark, Ellipsis, Globe, Heart, MessageCircle, Play, Send, Share2, ThumbsUp } from "lucide-react";
 import type { PlatformId } from "@/lib/platforms";
 import {
+  DEFAULT_FACEBOOK,
   DEFAULT_INSTAGRAM,
   DEFAULT_PINTEREST,
   type InstagramOptions,
+  type FacebookOptions,
   type MediaItem,
   type PinterestOptions,
   type YouTubeOptions,
@@ -22,6 +24,7 @@ export function PostPreview({
   youtube,
   instagram = DEFAULT_INSTAGRAM,
   pinterest = DEFAULT_PINTEREST,
+  facebook = DEFAULT_FACEBOOK,
 }: {
   platform: PlatformId;
   account: PreviewAccount;
@@ -30,9 +33,12 @@ export function PostPreview({
   youtube: YouTubeOptions;
   instagram?: InstagramOptions;
   pinterest?: PinterestOptions;
+  facebook?: FacebookOptions;
 }) {
   if (platform === "pinterest") return <PinterestPreview account={account} caption={caption} media={media} title={pinterest.title} />;
+  // Instagram and Facebook Stories look alike: a tall 9:16 screen with the account at the top.
   if (platform === "instagram" && instagram.format === "story") return <InstagramStoryPreview account={account} media={media} />;
+  if (platform === "facebook" && facebook.format === "story") return <InstagramStoryPreview account={account} media={media} />;
   if (platform === "instagram") return <InstagramPreview account={account} caption={caption} media={media} />;
   if (platform === "facebook") return <FacebookPreview account={account} caption={caption} media={media} />;
   if (platform === "bluesky") return <BlueskyPreview account={account} caption={caption} media={media} />;
@@ -273,6 +279,22 @@ function YouTubePreview({
   youtube: YouTubeOptions;
 }) {
   const video = media.find((m) => m.kind === "video");
+  // A Short plays full screen and vertical, with the title and channel over the video.
+  if (youtube.format === "short") {
+    return (
+      <div className="relative mx-auto aspect-[9/16] w-full max-w-[280px] overflow-hidden rounded-2xl bg-black text-[13px] text-white">
+        <MediaView item={video} className="size-full" />
+        <div className="absolute inset-x-0 bottom-0 space-y-2 bg-gradient-to-t from-black/80 to-transparent p-3 pt-10">
+          <div className="flex items-center gap-2">
+            <Avatar account={account} size={24} />
+            <span className="truncate font-medium">{account.name}</span>
+          </div>
+          <p className="line-clamp-2">{youtube.title || <span className="text-white/60">Your Short&apos;s title</span>}</p>
+        </div>
+        <span className="absolute top-2 left-2 rounded-full bg-black/60 px-2 py-0.5 text-xs font-semibold">Shorts</span>
+      </div>
+    );
+  }
   return (
     <div className="overflow-hidden rounded-2xl border bg-white text-[13px] text-[#0f0f0f]">
       <MediaView item={video} className="aspect-video w-full" />

@@ -3,7 +3,7 @@ import { PLATFORMS, type PlatformId } from "@/lib/platforms";
 import type { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail, siteUrl } from "./send";
 
-// The emails SocialFlow sends about things that happen while you're not watching.
+// The emails Ripple sends about things that happen while you're not watching.
 // Each one checks the user's choices in Settings (profiles.email_on_*).
 
 type Admin = ReturnType<typeof createAdminClient>;
@@ -33,12 +33,12 @@ async function recipient(admin: Admin, userId: string, preference: Preference): 
 // A simple email layout: heading, paragraphs, an optional list and a button.
 function layout(opts: { heading: string; intro: string; items?: string[]; button?: { label: string; url: string } }) {
   const html = `<div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#3a2a20">
-  <p style="font-weight:bold;color:#e0623a;margin:0 0 16px">SocialFlow</p>
+  <p style="font-weight:bold;color:#e0623a;margin:0 0 16px">Ripple</p>
   <h1 style="font-size:20px;margin:0 0 12px">${escapeHtml(opts.heading)}</h1>
   <p style="margin:0 0 12px;line-height:1.5">${escapeHtml(opts.intro)}</p>
   ${opts.items?.length ? `<ul style="padding-left:20px;line-height:1.6">${opts.items.map((i) => `<li>${escapeHtml(i)}</li>`).join("")}</ul>` : ""}
   ${opts.button ? `<p style="margin:20px 0"><a href="${escapeHtml(opts.button.url)}" style="background:#e0623a;color:#fff;text-decoration:none;padding:10px 18px;border-radius:999px;display:inline-block">${escapeHtml(opts.button.label)}</a></p>` : ""}
-  <p style="font-size:12px;color:#8a7a70;margin-top:24px"><a href="${escapeHtml(`${siteUrl()}/settings?tab=notifications`)}" style="color:#8a7a70">Turn these emails off</a> in SocialFlow under Settings &gt; Notifications.</p>
+  <p style="font-size:12px;color:#8a7a70;margin-top:24px"><a href="${escapeHtml(`${siteUrl()}/settings?tab=notifications`)}" style="color:#8a7a70">Turn these emails off</a> in Ripple under Settings &gt; Notifications.</p>
 </div>`;
   const text = [
     opts.heading,
@@ -47,7 +47,7 @@ function layout(opts: { heading: string; intro: string; items?: string[]; button
     ...(opts.items?.length ? ["", ...opts.items.map((i) => `- ${i}`)] : []),
     ...(opts.button ? ["", `${opts.button.label}: ${opts.button.url}`] : []),
     "",
-    `Turn these emails off in SocialFlow under Settings > Notifications: ${siteUrl()}/settings?tab=notifications`,
+    `Turn these emails off in Ripple under Settings > Notifications: ${siteUrl()}/settings?tab=notifications`,
   ].join("\n");
   return { html, text };
 }
@@ -99,7 +99,7 @@ export async function emailScheduledPostResult(admin: Admin, postId: string, use
       heading: "Your scheduled post went out",
       intro: `“${caption}” is now live on:`,
       items: post.post_targets.map((t) => (t.external_url ? `${accountName(t)}: ${t.external_url}` : accountName(t))),
-      button: { label: "See it in SocialFlow", url: postUrl },
+      button: { label: "See it in Ripple", url: postUrl },
     });
     await sendEmail({ to, subject: "Your scheduled post went out", text, html });
     return { sent: "published" };
@@ -126,10 +126,10 @@ export async function markNeedsReconnecting(admin: Admin, accountId: string) {
     const name = `${account.display_name ?? account.username ?? "One of your accounts"} (${platformName(account.platform as PlatformId)})`;
     const { html, text } = layout({
       heading: "An account needs reconnecting",
-      intro: `${name} stopped accepting SocialFlow's login, so posts to it will fail until you reconnect it. This usually happens after a password change or when access was removed.`,
+      intro: `${name} stopped accepting Ripple's login, so posts to it will fail until you reconnect it. This usually happens after a password change or when access was removed.`,
       button: { label: "Reconnect it", url: `${siteUrl()}/connections` },
     });
-    await sendEmail({ to, subject: `Reconnect ${name} in SocialFlow`, text, html });
+    await sendEmail({ to, subject: `Reconnect ${name} in Ripple`, text, html });
   } catch (err) {
     // The account is marked either way; a missed email mustn't break the sync that found the problem.
     console.error("[email] reconnect alert failed:", err);

@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { Composer, type ComposerInitial } from "@/components/composer/composer";
 import { PageHeader } from "@/components/page-header";
 import { isValidDate } from "@/lib/calendar";
-import { DEFAULT_INSTAGRAM, DEFAULT_PINTEREST } from "@/lib/post-rules";
+import { DEFAULT_FACEBOOK, DEFAULT_INSTAGRAM, DEFAULT_PINTEREST } from "@/lib/post-rules";
 import {
   getBestTimeSuggestions,
   getCurrentUser,
@@ -60,6 +60,7 @@ export default async function CreatePostPage({ searchParams }: PageProps<"/creat
         customCaptions: draft.customCaptions,
         youtube: draft.youtube,
         instagram: draft.instagram,
+        facebook: draft.facebook,
         pinterest: draft.pinterest,
       }
     : original
@@ -74,6 +75,7 @@ export default async function CreatePostPage({ searchParams }: PageProps<"/creat
           customCaptions: original.customCaptions,
           youtube: original.youtube,
           instagram: original.instagram,
+          facebook: original.facebook,
           pinterest: original.pinterest,
         }
       : {
@@ -83,8 +85,9 @@ export default async function CreatePostPage({ searchParams }: PageProps<"/creat
           // New posts start with every connected account chosen.
           accountIds: accounts.map((a) => a.id),
           customCaptions: {},
-          youtube: { title: "", privacy: "public" },
+          youtube: { title: "", privacy: "public", format: "video" },
           instagram: DEFAULT_INSTAGRAM,
+          facebook: DEFAULT_FACEBOOK,
           pinterest: DEFAULT_PINTEREST,
         };
 

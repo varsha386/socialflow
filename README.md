@@ -1,6 +1,6 @@
-# SocialFlow
+# Ripple
 
-**Write once. Post everywhere.** SocialFlow is a full-stack web app for creating, scheduling and publishing posts to **Instagram, Facebook and YouTube** from one dashboard, with analytics and a unified comments inbox.
+**Write once. Post everywhere.** Ripple is a full-stack web app for creating, scheduling and publishing posts to **Instagram, Facebook and YouTube** from one dashboard, with analytics and a unified comments inbox.
 
 **Live demo:** https://socialflow-uhru.vercel.app
 
@@ -21,7 +21,7 @@
 | **Connections** | Connect Facebook Pages, Instagram Business/Creator accounts and YouTube channels with OAuth. Tokens are encrypted (AES-256-GCM) and never sent to the browser |
 | **Create post** | Upload photos and videos, write one caption or a different caption per platform, emoji, hashtag and link helpers, live previews, and per-platform checks (e.g. Instagram aspect ratios, "YouTube needs one video") |
 | **Bluesky** | Connect with a handle and an app password (stored encrypted). Posts up to 300 characters with clickable links, #hashtags and @mentions, plus up to 4 photos (shrunk automatically to Bluesky's ~1 MB limit). Works with Schedule, Queue and Post again. Videos, analytics and comments are not supported yet |
-| **Delete posts** | Delete failed, partly published and published posts from a post's page, or several at once with Select on the Posts tabs. Optionally also delete the live copies from Facebook, Instagram, YouTube, Bluesky and Threads; if any platform refuses, the post stays in SocialFlow with the reason. Needs `instagram_manage_contents` and `threads_delete` (reconnect once) |
+| **Delete posts** | Delete failed, partly published and published posts from a post's page, or several at once with Select on the Posts tabs. Optionally also delete the live copies from Facebook, Instagram, YouTube, Bluesky and Threads; if any platform refuses, the post stays in Ripple with the reason. Needs `instagram_manage_contents` and `threads_delete` (reconnect once) |
 | **LinkedIn** | Connect a personal profile with "Sign in with LinkedIn" (logins last 60 days, then you reconnect; LinkedIn only allows renewing for approved partners). Posts up to 3,000 characters: text only, one photo, 2–20 photos, or one MP4 video (3 seconds or longer). Links stay clickable in the text, but LinkedIn doesn't add a preview card for posts made through apps. Company Pages need LinkedIn's separately approved Community Management API, so they're not supported yet. Needs `LINKEDIN_CLIENT_ID` and `LINKEDIN_CLIENT_SECRET` |
 | **Pinterest** | Connect with "Log in with Pinterest" (renewed automatically, so no reconnecting while you post at least every 60 days). On Create, choose a board for each Pinterest account (or make a new one), plus an optional Pin title and link; the caption becomes the description (up to 800 characters). Photo Pins and carousels of 2–5 photos; videos aren't supported yet. Not in Bulk upload, since each Pin needs a board. Needs `PINTEREST_APP_ID`, `PINTEREST_APP_SECRET` and the `pinterest_platform` migration; keep `PINTEREST_SANDBOX=1` until Pinterest approves Standard access (until then, Pins are only visible to you) |
 | **Threads** | Connect with "Log in with Threads" (60-day login, renewed automatically when under 10 days are left). Posts up to 500 characters: text only, one photo or video, or a carousel of 2–20. Checks Threads' 250 posts per account per 24 hours. Needs `THREADS_APP_ID` and `THREADS_APP_SECRET` and the `threads_platform` migration |
@@ -36,6 +36,7 @@
 | **Free and Pro plans** | Free: 3 connected accounts, 30 scheduled posts and 10 AI captions a month. Pro ($9/month): unlimited, plus best times and top posts in Analytics and priority support. The Plan page shows usage. Limits are checked on the server; reconnecting never counts. Pro is switched on by hand for now (SQL in the migration) |
 | **Views for Instagram and Facebook** | Analytics collects views for Instagram posts and Reels (`views` insight) and Facebook posts (`post_media_view`), next to YouTube views. Needs the `instagram_manage_insights` and `read_insights` permissions (reconnect once); if they're missing, views are simply left empty and the account is never marked broken |
 | **Instagram Stories** | On Create, choose "Feed post" or "Story" for Instagram. A Story is one photo or video (videos up to 60 seconds) with no caption, previewed in a 9:16 frame. Stories are skipped by analytics and the inbox |
+| **Facebook Stories and YouTube Shorts** | Facebook gets the same "Feed post" or "Story" choice as Instagram (a Page Story is one photo, or a video up to 60 seconds, with no caption; skipped by analytics and the inbox). YouTube gets "Video" or "Short": a Short must be vertical or square and up to 3 minutes, Ripple adds #Shorts to the description, and "View post" opens it at youtube.com/shorts |
 | **Email alerts** | Emails when a scheduled post fails (on by default), when an account needs reconnecting (once, on by default) and when a scheduled post goes out (off by default), chosen in Settings. Sent with Resend (`RESEND_API_KEY`); without a key they're printed in the dev server window |
 | **AI caption writer** | "Write with AI" on Create: describe the post, pick a tone and hashtags, and get three captions to choose from (Claude Opus 5.5, structured JSON output). Works for the main caption or one platform's tab. Needs `ANTHROPIC_API_KEY` |
 | **Link in bio** | A public page at `/u/<name>` with your title, bio and link buttons, to share in your social bios. Edit it with a live preview, reorder links, and publish or hide it. Only published pages are public, and links must be http(s) |
@@ -91,7 +92,7 @@ supabase/migrations/  Database setup, run in order
 
 ## Running it yourself
 
-> **Working on SocialFlow with the team?** Follow [DEVELOPER_SETUP.md](DEVELOPER_SETUP.md) instead: it covers shared settings, branches and pull requests, and database rules.
+> **Working on Ripple with the team?** Follow [DEVELOPER_SETUP.md](DEVELOPER_SETUP.md) instead: it covers shared settings, branches and pull requests, and database rules.
 
 1. Install [Node.js](https://nodejs.org) (LTS).
 2. Create a [Supabase](https://supabase.com) project and run each file in `supabase/migrations/` **in order** in its SQL Editor.

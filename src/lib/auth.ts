@@ -19,7 +19,7 @@ function friendly(message: string): string {
   if (m.includes("provider is not enabled")) return "Google login isn't set up yet. Use email for now.";
   if (m.includes("rate limit")) return "Too many attempts. Wait a minute and try again.";
   if (m.includes("password should be")) return "Choose a stronger password (at least 8 characters).";
-  if (m.includes("invalid api key") || m.includes("no api key")) return "SocialFlow can't reach the login service. Check the Supabase key in .env.local.";
+  if (m.includes("invalid api key") || m.includes("no api key")) return "Ripple can't reach the login service. Check the Supabase key in .env.local.";
   return message;
 }
 

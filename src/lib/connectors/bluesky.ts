@@ -29,6 +29,19 @@ export async function blueskyLogin(identifier: string, appPassword: string): Pro
   }
 }
 
+// An account's name, handle and photo from Bluesky's public service (no login needed).
+// Returns null if Bluesky can't send them right now: they're nice to have, not essential.
+export async function blueskyProfile(actor: string): Promise<{ handle?: string; displayName?: string; avatar?: string } | null> {
+  try {
+    const res = await fetch(
+      `https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=${encodeURIComponent(actor)}`
+    );
+    return res.ok ? await res.json() : null;
+  } catch {
+    return null;
+  }
+}
+
 // Handles can be typed as "@name", "name" or "name.bsky.social".
 export function normalizeHandle(input: string) {
   const handle = input.trim().replace(/^@/, "").toLowerCase();

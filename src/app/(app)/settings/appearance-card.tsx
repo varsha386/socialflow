@@ -22,7 +22,7 @@ export function AppearanceCard() {
       <CardHeader>
         <CardTitle>Appearance</CardTitle>
         <CardDescription>
-          Choose light or dark, or let SocialFlow follow your computer&apos;s setting. Saved on this
+          Choose light or dark, or let Ripple follow your computer&apos;s setting. Saved on this
           browser.
         </CardDescription>
       </CardHeader>

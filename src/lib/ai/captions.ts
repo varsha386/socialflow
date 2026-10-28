@@ -33,7 +33,7 @@ const OUTPUT_SCHEMA = {
 
 // The fixed instructions. Kept the same for every request (nothing personal or
 // time-based in here), so they can be cached by the API.
-const SYSTEM_PROMPT = `You write social media captions for small creators and businesses who use SocialFlow to post to Instagram, Facebook and YouTube.
+const SYSTEM_PROMPT = `You write social media captions for small creators and businesses who use Ripple to post to Instagram, Facebook and YouTube.
 
 Write three captions that are clearly different from each other (for example: one short and punchy, one a little longer with more detail, one that ends with a question or call to action). Each caption must stand on its own and be ready to post.
 

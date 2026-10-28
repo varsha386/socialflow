@@ -49,12 +49,12 @@ function ConfirmDelete({
           </label>
           <p className="text-muted-foreground">
             {fromPlatforms
-              ? "This deletes the live posts and can't be undone. If a platform refuses, the post stays in SocialFlow so you can try again."
-              : "Only removes it from SocialFlow. The live posts stay on the platforms. Its analytics and comments in SocialFlow are removed too."}
+              ? "This deletes the live posts and can't be undone. If a platform refuses, the post stays in Ripple so you can try again."
+              : "Only removes it from Ripple. The live posts stay on the platforms. Its analytics and comments in Ripple are removed too."}
           </p>
         </>
       ) : (
-        <p className="text-muted-foreground">Nothing was published, so this only removes it from SocialFlow.</p>
+        <p className="text-muted-foreground">Nothing was published, so this only removes it from Ripple.</p>
       )}
       <div className="flex flex-wrap gap-2">
         <Button
@@ -63,7 +63,7 @@ function ConfirmDelete({
           onClick={() => startTransition(async () => onDone(await deletePosts(postIds, fromPlatforms)))}
         >
           {pending ? <LoaderCircle className="animate-spin" /> : <Trash />}
-          {fromPlatforms ? "Delete everywhere" : "Delete from SocialFlow"}
+          {fromPlatforms ? "Delete everywhere" : "Delete from Ripple"}
         </Button>
         <Button variant="ghost" disabled={pending} onClick={onCancel}>
           Cancel
@@ -84,7 +84,7 @@ function ResultNote({ result }: { result: DeletePostsResult }) {
       )}
       {result.kept.map((k) => (
         <p key={k.postId} className="text-destructive">
-          Kept in SocialFlow: {k.reason}
+          Kept in Ripple: {k.reason}
           {k.results.some((r) => r.ok) && ` (Deleted from: ${k.results.filter((r) => r.ok).map((r) => r.account).join(", ")}.)`}
         </p>
       ))}

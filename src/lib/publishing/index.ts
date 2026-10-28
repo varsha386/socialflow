@@ -6,6 +6,7 @@ import {
   INSTAGRAM_POSTS_PER_DAY,
   THREADS_POSTS_PER_DAY,
   checkPost,
+  type FacebookOptions,
   type InstagramOptions,
   type MediaItem,
   type PinterestPin,
@@ -58,6 +59,7 @@ type Prepared = {
   captionFor: (t: TargetRow) => string;
   youtubeOptions: (t: TargetRow) => YouTubeOptions;
   instagramOptions: (t: TargetRow) => InstagramOptions;
+  facebookOptions: (t: TargetRow) => FacebookOptions;
   pinterestPin: (t: TargetRow) => PinterestPin;
 };
 
@@ -115,8 +117,12 @@ async function prepare(
   const youtubeOptions = (t: TargetRow): YouTubeOptions => ({
     title: String(t.options.title ?? ""),
     privacy: (t.options.privacy as YouTubeOptions["privacy"]) ?? "public",
+    format: t.options.format === "short" ? "short" : "video",
   });
   const instagramOptions = (t: TargetRow): InstagramOptions => ({
+    format: t.options.format === "story" ? "story" : "feed",
+  });
+  const facebookOptions = (t: TargetRow): FacebookOptions => ({
     format: t.options.format === "story" ? "story" : "feed",
   });
   const pinterestPin = (t: TargetRow): PinterestPin => ({
@@ -130,18 +136,22 @@ async function prepare(
   for (const t of todo) {
     const platform = t.social_accounts!.platform;
     const pin = pinterestPin(t);
-    const problems = checkPost(platform, captionFor(t), media, youtubeOptions(t), instagramOptions(t), {
-      title: pin.title,
-      link: pin.link,
-      boards: {},
-    });
+    const problems = checkPost(
+      platform,
+      captionFor(t),
+      media,
+      youtubeOptions(t),
+      instagramOptions(t),
+      { title: pin.title, link: pin.link, boards: {} },
+      facebookOptions(t)
+    );
     if (platform === "pinterest" && !pin.boardId) problems.push("Choose a board for the Pin.");
     if (problems.length) {
       return { error: `${t.social_accounts!.display_name ?? platform}: ${problems.join(" ")}` };
     }
   }
 
-  return { post, media, todo, captionFor, youtubeOptions, instagramOptions, pinterestPin };
+  return { post, media, todo, captionFor, youtubeOptions, instagramOptions, facebookOptions, pinterestPin };
 }
 
 // Checks a post could be published, without publishing it (used before scheduling).
@@ -157,7 +167,7 @@ export async function publishPost(postId: string, userId: string): Promise<Publi
   const admin = createAdminClient();
   const prepared = await prepare(admin, postId, userId);
   if ("error" in prepared) return prepared;
-  const { media, todo, captionFor, youtubeOptions, instagramOptions, pinterestPin } = prepared;
+  const { media, todo, captionFor, youtubeOptions, instagramOptions, facebookOptions, pinterestPin } = prepared;
 
   // Instagram allows 100 posts per account in a rolling 24 hours, Threads 250. Checked here
   // (when it actually goes out) rather than when scheduling, so a post for tomorrow isn't blocked today.
@@ -211,6 +221,7 @@ export async function publishPost(postId: string, userId: string): Promise<Publi
           media,
           youtube: youtubeOptions(t),
           instagram: instagramOptions(t),
+          facebook: facebookOptions(t),
           pinterest: pinterestPin(t),
         });
         await admin

@@ -193,7 +193,7 @@ export function AuthForm({ mode, initialError }: { mode: Mode; initialError?: st
       </form>
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
-        {isSignup ? "Already have an account? " : "New to SocialFlow? "}
+        {isSignup ? "Already have an account? " : "New to Ripple? "}
         <Link
           href={isSignup ? "/login" : "/signup"}
           className="font-medium text-primary hover:underline"

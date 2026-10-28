@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { saveAccounts } from "@/lib/connectors";
-import { blueskyLogin, normalizeHandle } from "@/lib/connectors/bluesky";
+import { blueskyLogin, blueskyProfile, normalizeHandle } from "@/lib/connectors/bluesky";
 import { newAccountsAllowed } from "@/lib/plan-limits";
 import { FREE_LIMITS } from "@/lib/plans";
 import { PublishError } from "@/lib/publishing/types";
@@ -49,7 +49,9 @@ export async function connectBluesky(handleInput: string, appPasswordInput: stri
 
   const did = agent.did;
   if (!did) return { error: "Couldn't reach Bluesky. Try again." };
-  const { data: profile } = await agent.getProfile({ actor: did });
+  // Bluesky's logged-in profile lookup sometimes fails with "Internal Server Error", so
+  // the name and photo come from its public service, falling back to the handle.
+  const profile = await blueskyProfile(did);
 
   // Free plan: reconnecting an account they already have is always allowed.
   const { data: existing } = await supabase
@@ -68,9 +70,9 @@ export async function connectBluesky(handleInput: string, appPasswordInput: stri
     {
       platform: "bluesky",
       platformAccountId: did, // stays the same even if they change their handle
-      displayName: profile.displayName || profile.handle,
-      username: profile.handle,
-      avatarUrl: profile.avatar ?? null,
+      displayName: profile?.displayName || profile?.handle || handle,
+      username: profile?.handle ?? handle,
+      avatarUrl: profile?.avatar ?? null,
       accessToken: appPassword,
       refreshToken: null,
       expiresAt: null,

@@ -1,4 +1,4 @@
-import type { InstagramOptions, MediaItem, PinterestPin, YouTubeOptions } from "@/lib/post-rules";
+import type { FacebookOptions, InstagramOptions, MediaItem, PinterestPin, YouTubeOptions } from "@/lib/post-rules";
 
 // Everything a platform publisher needs to send one post to one account.
 export type PublishJob = {
@@ -8,6 +8,7 @@ export type PublishJob = {
   media: MediaItem[];
   youtube: YouTubeOptions;
   instagram: InstagramOptions;
+  facebook: FacebookOptions;
   pinterest: PinterestPin; // the board, title and link for this account's Pin
 };
 

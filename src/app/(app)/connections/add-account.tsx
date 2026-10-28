@@ -26,7 +26,7 @@ export function AddAccount({ step, notReady }: { step: "pick" | PlatformId; notR
           <CardTitle>{step === "bluesky" ? "Connect Bluesky" : "Add an account"}</CardTitle>
           <CardDescription>
             {step === "bluesky"
-              ? "Use an app password, so SocialFlow never needs your real Bluesky password."
+              ? "Use an app password, so Ripple never needs your real Bluesky password."
               : "Choose where you want to post. Connect only the ones you use."}
           </CardDescription>
         </div>
@@ -118,7 +118,7 @@ function BlueskyForm({ platformName }: { platformName: string }) {
       <ol className="list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
         <li>
           In {platformName}, open <span className="font-medium text-foreground">Settings → Privacy and security → App passwords</span>{" "}
-          and add one named “SocialFlow”.{" "}
+          and add one named “Ripple”.{" "}
           <a
             href="https://bsky.app/settings/app-passwords"
             target="_blank"

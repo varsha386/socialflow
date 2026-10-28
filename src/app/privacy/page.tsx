@@ -4,7 +4,7 @@ import { SITE } from "@/lib/site";
 
 export const metadata: Metadata = { title: "Privacy Policy" };
 
-// Every platform SocialFlow connects to, or is adding (platform reviewers check that they're named here).
+// Every platform Ripple connects to, or is adding (platform reviewers check that they're named here).
 const PLATFORM_LIST = "Instagram, Facebook, YouTube, Threads, Bluesky, LinkedIn, Pinterest and X (Twitter)";
 
 export default function PrivacyPage() {

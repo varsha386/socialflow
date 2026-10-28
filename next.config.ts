@@ -2,14 +2,14 @@ import type { NextConfig } from "next";
 
 // Security headers sent with every page.
 const securityHeaders = [
-  // Don't let other websites show SocialFlow inside a frame (stops "clickjacking").
+  // Don't let other websites show Ripple inside a frame (stops "clickjacking").
   { key: "X-Frame-Options", value: "DENY" },
   {
     key: "Content-Security-Policy",
     value: [
       "frame-ancestors 'none'", // same as above, for modern browsers
       "base-uri 'self'", // stop injected <base> tags from redirecting links
-      "form-action 'self'", // forms can only submit to SocialFlow
+      "form-action 'self'", // forms can only submit to Ripple
       "object-src 'none'", // no old-style plugins (Flash, etc.)
     ].join("; "),
   },
@@ -17,7 +17,7 @@ const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   // Other sites only see "socialflow-uhru.vercel.app", never full page addresses.
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  // SocialFlow never needs the camera, microphone or location.
+  // Ripple never needs the camera, microphone or location.
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
 ];
 

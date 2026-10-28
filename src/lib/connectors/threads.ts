@@ -12,7 +12,7 @@ const API = `${THREADS_GRAPH}/v1.0`;
 const SCOPES = [
   "threads_basic", // read the profile (required for everything)
   "threads_content_publish", // publish posts
-  "threads_delete", // delete posts made through SocialFlow (Posts > Delete)
+  "threads_delete", // delete posts made through Ripple (Posts > Delete)
 ];
 
 type ThreadsError = { error?: { message?: string; code?: number; error_user_msg?: string } };
@@ -39,7 +39,7 @@ export async function threadsApi<T>(
     const err = body.error;
     if (err?.code === 190) throw new PublishError("Threads needs you to reconnect this account.", { reconnect: true });
     if (err?.code === 10 || (err?.code && err.code >= 200 && err.code < 300)) {
-      throw new PublishError("SocialFlow doesn't have permission to post here. Reconnect Threads and allow everything it asks for.", {
+      throw new PublishError("Ripple doesn't have permission to post here. Reconnect Threads and allow everything it asks for.", {
         reconnect: true,
       });
     }

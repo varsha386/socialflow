@@ -54,7 +54,8 @@ export function VerifyCodeForm({ next }: { next: string }) {
       </span>
       <h1 className="mt-6 text-3xl font-semibold tracking-tight">Enter your code</h1>
       <p className="mt-2 text-muted-foreground">
-        Open your authenticator app and type the 6-digit code for SocialFlow.
+        Open your authenticator app and type the 6-digit code for Ripple (listed as SocialFlow if you set it up
+        before the name changed).
       </p>
 
       <form onSubmit={handleSubmit} noValidate className="mt-8 space-y-4">
