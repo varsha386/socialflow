@@ -43,7 +43,7 @@ export async function linkedinError(res: Response): Promise<PublishError> {
   }
   if (res.status === 401) return new PublishError("LinkedIn needs you to reconnect this account.", { reconnect: true });
   if (res.status === 403) {
-    return new PublishError("SocialFlow doesn't have permission to post here. Reconnect LinkedIn and allow everything it asks for.", {
+    return new PublishError("Ripple doesn't have permission to post here. Reconnect LinkedIn and allow everything it asks for.", {
       reconnect: true,
     });
   }

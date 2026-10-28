@@ -74,7 +74,7 @@ function ProfileSection({ user }: { user: Awaited<ReturnType<typeof getCurrentUs
     <Card className="max-w-xl">
       <CardHeader>
         <CardTitle>Profile</CardTitle>
-        <CardDescription>How you appear in SocialFlow.</CardDescription>
+        <CardDescription>How you appear in Ripple.</CardDescription>
       </CardHeader>
       <CardContent>
         <ProfileForm name={user.name} email={user.email} timezone={user.timezone} timezones={timezones} />

@@ -35,7 +35,7 @@ export async function graph<T>(
     // 10 / 200-299 = a permission is missing.
     if (err?.code === 10 || (err?.code && err.code >= 200 && err.code < 300)) {
       throw new PublishError(
-        "SocialFlow doesn't have permission to post here. Reconnect and allow all the permissions Facebook asks for.",
+        "Ripple doesn't have permission to post here. Reconnect and allow all the permissions Facebook asks for.",
         { reconnect: true }
       );
     }

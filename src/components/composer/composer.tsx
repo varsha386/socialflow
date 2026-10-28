@@ -20,9 +20,12 @@ import { PLATFORMS, type PlatformId } from "@/lib/platforms";
 import {
   CAPTION_LIMITS,
   INSTAGRAM_POSTS_PER_DAY,
+  FACEBOOK_STORY_MAX_SECONDS,
   INSTAGRAM_STORY_MAX_SECONDS,
+  YOUTUBE_SHORT_MAX_SECONDS,
   YOUTUBE_TITLE_LIMIT,
   checkPost,
+  type FacebookOptions,
   type InstagramOptions,
   type MediaItem,
   type PinterestOptions,
@@ -40,6 +43,7 @@ export type ComposerInitial = {
   customCaptions: Partial<Record<PlatformId, string>>;
   youtube: YouTubeOptions;
   instagram: InstagramOptions;
+  facebook: FacebookOptions;
   pinterest: PinterestOptions;
 };
 
@@ -87,6 +91,7 @@ export function Composer({
   const [customCaptions, setCustomCaptions] = useState(initial.customCaptions);
   const [youtube, setYoutube] = useState<YouTubeOptions>(initial.youtube);
   const [instagram, setInstagram] = useState<InstagramOptions>(initial.instagram);
+  const [facebook, setFacebook] = useState<FacebookOptions>(initial.facebook);
   const [pinterest, setPinterest] = useState<PinterestOptions>(initial.pinterest);
   const [tab, setTab] = useState<"all" | PlatformId>("all");
   const [previewChoice, setPreviewChoice] = useState<PlatformId | null>(null);
@@ -130,7 +135,7 @@ export function Composer({
   const checks = platforms.map((p) => ({
     platform: p,
     problems: [
-      ...checkPost(p, captionFor(p), media, youtube, instagram, pinterest),
+      ...checkPost(p, captionFor(p), media, youtube, instagram, pinterest, facebook),
       ...(p === "instagram" ? instagramLimitNotes.filter((n) => n.includes("has reached")) : []),
       ...(p === "pinterest" ? missingBoards : []),
     ],
@@ -154,6 +159,7 @@ export function Composer({
       ),
       youtube,
       instagram,
+      facebook,
       pinterest,
     });
     if (result.postId && result.postId !== postId) {
@@ -413,6 +419,21 @@ export function Composer({
 
             {activeTab === "youtube" || (activeTab === "all" && platforms.includes("youtube")) ? (
               <div className="grid gap-3 rounded-2xl bg-muted p-4 sm:grid-cols-[1fr_auto]">
+                <div className="sm:col-span-2">
+                  <FormatChoice
+                    id="yt-format-label"
+                    label="YouTube: upload as"
+                    value={youtube.format ?? "video"}
+                    options={[
+                      { value: "video", label: "Video", hint: "A normal video on your channel" },
+                      { value: "short", label: "Short", hint: "Vertical or square, up to 3 minutes" },
+                    ]}
+                    onChange={(format) => {
+                      setMessage(null);
+                      setYoutube((y) => ({ ...y, format }));
+                    }}
+                  />
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="yt-title">YouTube title</Label>
                   <Input
@@ -440,49 +461,57 @@ export function Composer({
                   </select>
                 </div>
                 <p className="text-xs text-muted-foreground sm:col-span-2">
-                  The caption becomes the video description. Until Google verifies SocialFlow, YouTube keeps
-                  uploaded videos private.
+                  The caption becomes the video description.{" "}
+                  {youtube.format === "short" &&
+                    `YouTube makes vertical or square videos of up to ${YOUTUBE_SHORT_MAX_SECONDS / 60} minutes a Short; Ripple also adds #Shorts to the description. `}
+                  Until Google verifies Ripple, YouTube keeps uploaded videos private.
                 </p>
               </div>
             ) : null}
 
             {activeTab === "instagram" || (activeTab === "all" && platforms.includes("instagram")) ? (
               <div className="space-y-2 rounded-2xl bg-muted p-4">
-                <p className="text-sm font-medium" id="ig-format-label">
-                  Instagram: post as
-                </p>
-                <div className="flex flex-wrap gap-2" role="radiogroup" aria-labelledby="ig-format-label">
-                  {(
-                    [
-                      { value: "feed", label: "Feed post", hint: "Photo, carousel or Reel, with the caption" },
-                      { value: "story", label: "Story", hint: "One photo or video, shown for 24 hours" },
-                    ] as const
-                  ).map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      role="radio"
-                      aria-checked={instagram.format === option.value}
-                      onClick={() => {
-                        setMessage(null);
-                        setInstagram({ format: option.value });
-                      }}
-                      className={cn(
-                        "flex-1 rounded-xl border px-3 py-2 text-left text-sm transition-colors",
-                        instagram.format === option.value
-                          ? "border-primary bg-card font-medium"
-                          : "border-transparent bg-card/60 text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      {option.label}
-                      <span className="block text-xs font-normal text-muted-foreground">{option.hint}</span>
-                    </button>
-                  ))}
-                </div>
+                <FormatChoice
+                  id="ig-format-label"
+                  label="Instagram: post as"
+                  value={instagram.format}
+                  options={[
+                    { value: "feed", label: "Feed post", hint: "Photo, carousel or Reel, with the caption" },
+                    { value: "story", label: "Story", hint: "One photo or video, shown for 24 hours" },
+                  ]}
+                  onChange={(format) => {
+                    setMessage(null);
+                    setInstagram({ format });
+                  }}
+                />
                 {instagram.format === "story" && (
                   <p className="text-xs text-muted-foreground">
                     Stories don&apos;t show a caption, so Instagram gets only the photo or video. Tall photos and
                     videos (9:16) fill the screen best. Videos can be up to {INSTAGRAM_STORY_MAX_SECONDS} seconds.
+                  </p>
+                )}
+              </div>
+            ) : null}
+
+            {activeTab === "facebook" || (activeTab === "all" && platforms.includes("facebook")) ? (
+              <div className="space-y-2 rounded-2xl bg-muted p-4">
+                <FormatChoice
+                  id="fb-format-label"
+                  label="Facebook: post as"
+                  value={facebook.format}
+                  options={[
+                    { value: "feed", label: "Feed post", hint: "Text, photos or a video, with the caption" },
+                    { value: "story", label: "Story", hint: "One photo or video, shown for 24 hours" },
+                  ]}
+                  onChange={(format) => {
+                    setMessage(null);
+                    setFacebook({ format });
+                  }}
+                />
+                {facebook.format === "story" && (
+                  <p className="text-xs text-muted-foreground">
+                    Stories don&apos;t show a caption, so Facebook gets only the photo or video. Tall photos and
+                    videos (9:16) fill the screen best. Videos can be up to {FACEBOOK_STORY_MAX_SECONDS} seconds.
                   </p>
                 )}
               </div>
@@ -534,7 +563,7 @@ export function Composer({
               ))}
             {platforms.includes("youtube") && (
               <p className="text-xs text-muted-foreground">
-                YouTube: until Google raises SocialFlow&apos;s quota, only a few videos a day can be uploaded across all
+                YouTube: until Google raises Ripple&apos;s quota, only a few videos a day can be uploaded across all
                 users. If an upload fails for this reason, try again tomorrow.
               </p>
             )}
@@ -701,6 +730,7 @@ export function Composer({
             media={media}
             youtube={youtube}
             instagram={instagram}
+            facebook={facebook}
             pinterest={pinterest}
           />
         ) : (
@@ -708,6 +738,49 @@ export function Composer({
             Choose an account to see a preview
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+// A row of choices, e.g. Instagram's "Feed post" or "Story".
+function FormatChoice<T extends string>({
+  id,
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: T;
+  options: { value: T; label: string; hint: string }[];
+  onChange: (value: T) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-medium" id={id}>
+        {label}
+      </p>
+      <div className="flex flex-wrap gap-2" role="radiogroup" aria-labelledby={id}>
+        {options.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            role="radio"
+            aria-checked={value === option.value}
+            onClick={() => onChange(option.value)}
+            className={cn(
+              "flex-1 rounded-xl border px-3 py-2 text-left text-sm transition-colors",
+              value === option.value
+                ? "border-primary bg-card font-medium"
+                : "border-transparent bg-card/60 text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {option.label}
+            <span className="block text-xs font-normal text-muted-foreground">{option.hint}</span>
+          </button>
+        ))}
       </div>
     </div>
   );

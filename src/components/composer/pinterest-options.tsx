@@ -65,7 +65,7 @@ export function PinterestOptionsPanel({
       </div>
       <p className="text-xs text-muted-foreground">
         The caption becomes the Pin&apos;s description. Pins need a photo; videos aren&apos;t supported yet.
-        {sandbox && " While Pinterest is reviewing SocialFlow, Pins are only visible to you."}
+        {sandbox && " While Pinterest is reviewing Ripple, Pins are only visible to you."}
       </p>
     </div>
   );

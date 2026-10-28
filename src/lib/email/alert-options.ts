@@ -9,7 +9,7 @@ export const EMAIL_ALERTS = [
   {
     key: "email_on_reconnect",
     label: "An account needs reconnecting",
-    description: "When Facebook, Instagram or YouTube stops accepting SocialFlow's login. Sent once, not every time.",
+    description: "When Facebook, Instagram or YouTube stops accepting Ripple's login. Sent once, not every time.",
   },
   {
     key: "email_on_published",

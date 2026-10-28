@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "SocialFlow",
-    template: "%s · SocialFlow",
+    default: "Ripple",
+    template: "%s · Ripple",
   },
   description: "Write once, post everywhere. Schedule and publish to all your social accounts.",
 };

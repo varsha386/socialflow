@@ -95,7 +95,7 @@ export default async function ConnectionsPage({ searchParams }: PageProps<"/conn
 
   return (
     <>
-      <PageHeader title="Connections" description="The accounts SocialFlow can post to.">
+      <PageHeader title="Connections" description="The accounts Ripple can post to.">
         {!step && (
           <Link href="/connections?add=1" className={buttonVariants({ size: "lg" })}>
             <Plus />

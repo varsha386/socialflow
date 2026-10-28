@@ -15,7 +15,15 @@ export type MediaItem = {
   durationSeconds: number | null;
 };
 
-export type YouTubeOptions = { title: string; privacy: "public" | "unlisted" | "private" };
+// A YouTube upload is a normal video or a Short. YouTube makes any vertical or square video
+// of up to 3 minutes a Short; there's no separate upload for them.
+export type YouTubeOptions = { title: string; privacy: "public" | "unlisted" | "private"; format?: "video" | "short" };
+export const YOUTUBE_SHORT_MAX_SECONDS = 180;
+
+// Facebook Pages can post to the feed or a Story (one photo, or a video of up to 60 seconds, no caption).
+export type FacebookOptions = { format: "feed" | "story" };
+export const DEFAULT_FACEBOOK: FacebookOptions = { format: "feed" };
+export const FACEBOOK_STORY_MAX_SECONDS = 60;
 
 // Instagram can post to the feed (a photo, carousel or Reel) or as a Story (one photo
 // or video, shown for 24 hours, no caption).
@@ -69,12 +77,14 @@ export function checkPost(
   media: MediaItem[],
   youtube: YouTubeOptions,
   instagram: InstagramOptions = DEFAULT_INSTAGRAM,
-  pinterest: PinterestOptions = DEFAULT_PINTEREST
+  pinterest: PinterestOptions = DEFAULT_PINTEREST,
+  facebook: FacebookOptions = DEFAULT_FACEBOOK
 ): string[] {
   const problems: string[] = [];
   const videos = media.filter((m) => m.kind === "video");
   const limit = CAPTION_LIMITS[platform];
-  const story = platform === "instagram" && instagram.format === "story";
+  const story =
+    (platform === "instagram" && instagram.format === "story") || (platform === "facebook" && facebook.format === "story");
 
   // Stories don't show a caption, so its length doesn't matter there.
   const length = platform === "bluesky" ? countGraphemes(caption) : caption.length;
@@ -101,7 +111,7 @@ export function checkPost(
   // Choosing a board is checked per account, where the boards are known (Create and publishing).
   if (platform === "pinterest") {
     if (media.length === 0) problems.push("Add a photo: every Pin needs one.");
-    if (videos.length > 0) problems.push("Pinterest videos aren't supported in SocialFlow yet. Use photos.");
+    if (videos.length > 0) problems.push("Pinterest videos aren't supported in Ripple yet. Use photos.");
     if (media.length > PINTEREST_MAX_IMAGES) problems.push(`Use ${PINTEREST_MAX_IMAGES} photos or fewer.`);
     if (pinterest.title.length > PINTEREST_TITLE_LIMIT) {
       problems.push(`Title is ${pinterest.title.length - PINTEREST_TITLE_LIMIT} characters too long.`);
@@ -113,7 +123,7 @@ export function checkPost(
 
   if (platform === "bluesky") {
     if (!caption.trim() && media.length === 0) problems.push("Write something or add a photo.");
-    if (videos.length > 0) problems.push("Bluesky videos aren't supported in SocialFlow yet. Use photos.");
+    if (videos.length > 0) problems.push("Bluesky videos aren't supported in Ripple yet. Use photos.");
     if (media.length > BLUESKY_MAX_IMAGES) problems.push(`Use ${BLUESKY_MAX_IMAGES} photos or fewer.`);
     if (media.some((m) => m.mimeType === "image/gif")) problems.push("GIFs aren't supported.");
   }
@@ -122,8 +132,9 @@ export function checkPost(
     if (media.length !== 1) problems.push("A Story needs exactly one photo or video.");
     if (media.some((m) => m.mimeType === "image/gif")) problems.push("GIFs aren't supported.");
     const video = media.find((m) => m.kind === "video");
-    if (video?.durationSeconds && video.durationSeconds > INSTAGRAM_STORY_MAX_SECONDS) {
-      problems.push(`Story videos can be up to ${INSTAGRAM_STORY_MAX_SECONDS} seconds long.`);
+    const maxSeconds = platform === "facebook" ? FACEBOOK_STORY_MAX_SECONDS : INSTAGRAM_STORY_MAX_SECONDS;
+    if (video?.durationSeconds && video.durationSeconds > maxSeconds) {
+      problems.push(`Story videos can be up to ${maxSeconds} seconds long.`);
     }
   } else if (platform === "instagram") {
     if (media.length === 0) problems.push("Add at least one photo or video.");
@@ -140,7 +151,7 @@ export function checkPost(
     if (badRatio) problems.push("Photos must be between 4:5 (portrait) and 1.91:1 (landscape).");
   }
 
-  if (platform === "facebook") {
+  if (platform === "facebook" && !story) {
     if (!caption.trim() && media.length === 0) problems.push("Write something or add a photo or video.");
     if (videos.length > 0 && media.length > 1) problems.push("A video post can only have that one video.");
   }
@@ -152,6 +163,15 @@ export function checkPost(
       problems.push(`Title is ${youtube.title.length - YOUTUBE_TITLE_LIMIT} characters too long.`);
     }
     if (/[<>]/.test(youtube.title + caption)) problems.push("YouTube doesn't allow < or > characters.");
+    const video = videos[0];
+    if (youtube.format === "short" && video) {
+      if (video.width && video.height && video.width > video.height) {
+        problems.push("A Short must be vertical or square. This video is wider than it is tall.");
+      }
+      if (video.durationSeconds && video.durationSeconds > YOUTUBE_SHORT_MAX_SECONDS) {
+        problems.push(`A Short can be up to ${YOUTUBE_SHORT_MAX_SECONDS / 60} minutes long.`);
+      }
+    }
   }
 
   return problems;

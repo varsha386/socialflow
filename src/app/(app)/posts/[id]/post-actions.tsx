@@ -20,7 +20,7 @@ export function RetryButton({ postId }: { postId: string }) {
       const body = (await res.json()) as { error?: string };
       if (body.error) setError(body.error);
     } catch {
-      setError("Couldn't reach SocialFlow. Check your connection and try again.");
+      setError("Couldn't reach Ripple. Check your connection and try again.");
     }
     setPending(false);
     router.refresh();

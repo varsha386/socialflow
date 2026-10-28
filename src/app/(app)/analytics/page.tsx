@@ -113,7 +113,7 @@ export default async function AnalyticsPage() {
                   ))}
                 </ul>
                 <p className="mt-4 text-xs text-muted-foreground">
-                  Growth appears once SocialFlow has collected counts on two different days.
+                  Growth appears once Ripple has collected counts on two different days.
                 </p>
               </CardContent>
             </Card>
