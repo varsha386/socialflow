@@ -14,7 +14,9 @@ import { connectBluesky } from "./actions";
 
 // "Add account": pick a platform, then connect it. `step` comes from the address
 // (?add=1 for the list, ?add=bluesky for Bluesky's form), so Back works.
-export function AddAccount({ step }: { step: "pick" | PlatformId }) {
+export function AddAccount({ step, notReady }: { step: "pick" | PlatformId; notReady: PlatformId[] }) {
+  const ready = PLATFORMS.filter((p) => !notReady.includes(p.id));
+  const comingSoon = [...PLATFORMS.filter((p) => notReady.includes(p.id)).map((p) => p.name), ...COMING_SOON];
   const bluesky = PLATFORMS.find((p) => p.id === "bluesky")!;
 
   return (
@@ -42,7 +44,7 @@ export function AddAccount({ step }: { step: "pick" | PlatformId }) {
         ) : (
           <div className="space-y-5">
             <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {PLATFORMS.map((p) => {
+              {ready.map((p) => {
                 const tile = (
                   <>
                     <PlatformBadge platform={p} />
@@ -76,7 +78,7 @@ export function AddAccount({ step }: { step: "pick" | PlatformId }) {
             </p>
             <div className="flex flex-wrap items-center gap-2 text-sm">
               <span className="text-muted-foreground">Coming soon:</span>
-              {COMING_SOON.map((name) => (
+              {comingSoon.map((name) => (
                 <span key={name} className="rounded-full border border-dashed px-3 py-1 text-muted-foreground">
                   {name}
                 </span>

@@ -17,7 +17,8 @@ export default async function BulkPage() {
       <BulkScheduler
         userId={user.id}
         timezone={user.timezone}
-        accounts={accounts.filter((a) => a.status === "connected")}
+        // Pinterest is left out: each Pin needs a board, chosen on Create post.
+        accounts={accounts.filter((a) => a.status === "connected" && a.platform !== "pinterest")}
       />
     </>
   );

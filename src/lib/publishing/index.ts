@@ -8,6 +8,7 @@ import {
   checkPost,
   type InstagramOptions,
   type MediaItem,
+  type PinterestPin,
   type YouTubeOptions,
 } from "@/lib/post-rules";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -15,6 +16,8 @@ import type { PostStatus } from "@/lib/types";
 import { publishToBluesky } from "./bluesky";
 import { publishToFacebook } from "./facebook";
 import { publishToInstagram } from "./instagram";
+import { publishToLinkedIn } from "./linkedin";
+import { publishToPinterest } from "./pinterest";
 import { publishToThreads } from "./threads";
 import { getAccessToken } from "./tokens";
 import { PublishError, type PublishJob, type PublishResult } from "./types";
@@ -26,6 +29,8 @@ const PUBLISHERS: Record<PlatformId, (job: PublishJob) => Promise<PublishResult>
   youtube: publishToYouTube,
   bluesky: publishToBluesky,
   threads: publishToThreads,
+  linkedin: publishToLinkedIn,
+  pinterest: publishToPinterest,
 };
 
 // Posts in these states may be (re)published.
@@ -53,6 +58,7 @@ type Prepared = {
   captionFor: (t: TargetRow) => string;
   youtubeOptions: (t: TargetRow) => YouTubeOptions;
   instagramOptions: (t: TargetRow) => InstagramOptions;
+  pinterestPin: (t: TargetRow) => PinterestPin;
 };
 
 // Loads a post and checks it's ready to go to every account it targets.
@@ -113,18 +119,29 @@ async function prepare(
   const instagramOptions = (t: TargetRow): InstagramOptions => ({
     format: t.options.format === "story" ? "story" : "feed",
   });
+  const pinterestPin = (t: TargetRow): PinterestPin => ({
+    boardId: String(t.options.boardId ?? ""),
+    title: String(t.options.title ?? ""),
+    link: String(t.options.link ?? ""),
+  });
   const captionFor = (t: TargetRow) => t.custom_caption ?? post.caption;
 
   // Check every target before sending anything.
   for (const t of todo) {
     const platform = t.social_accounts!.platform;
-    const problems = checkPost(platform, captionFor(t), media, youtubeOptions(t), instagramOptions(t));
+    const pin = pinterestPin(t);
+    const problems = checkPost(platform, captionFor(t), media, youtubeOptions(t), instagramOptions(t), {
+      title: pin.title,
+      link: pin.link,
+      boards: {},
+    });
+    if (platform === "pinterest" && !pin.boardId) problems.push("Choose a board for the Pin.");
     if (problems.length) {
       return { error: `${t.social_accounts!.display_name ?? platform}: ${problems.join(" ")}` };
     }
   }
 
-  return { post, media, todo, captionFor, youtubeOptions, instagramOptions };
+  return { post, media, todo, captionFor, youtubeOptions, instagramOptions, pinterestPin };
 }
 
 // Checks a post could be published, without publishing it (used before scheduling).
@@ -140,7 +157,7 @@ export async function publishPost(postId: string, userId: string): Promise<Publi
   const admin = createAdminClient();
   const prepared = await prepare(admin, postId, userId);
   if ("error" in prepared) return prepared;
-  const { media, todo, captionFor, youtubeOptions, instagramOptions } = prepared;
+  const { media, todo, captionFor, youtubeOptions, instagramOptions, pinterestPin } = prepared;
 
   // Instagram allows 100 posts per account in a rolling 24 hours, Threads 250. Checked here
   // (when it actually goes out) rather than when scheduling, so a post for tomorrow isn't blocked today.
@@ -194,6 +211,7 @@ export async function publishPost(postId: string, userId: string): Promise<Publi
           media,
           youtube: youtubeOptions(t),
           instagram: instagramOptions(t),
+          pinterest: pinterestPin(t),
         });
         await admin
           .from("post_targets")

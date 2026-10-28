@@ -4,20 +4,24 @@ import { SITE } from "@/lib/site";
 
 export const metadata: Metadata = { title: "Privacy Policy" };
 
+// Every platform SocialFlow connects to, or is adding (platform reviewers check that they're named here).
+const PLATFORM_LIST = "Instagram, Facebook, YouTube, Threads, Bluesky, LinkedIn, Pinterest and X (Twitter)";
+
 export default function PrivacyPage() {
   return (
     <LegalPage title="Privacy Policy">
       <p>
-        {SITE.name} helps you create, schedule and publish posts to Instagram, Facebook and YouTube. It&apos;s a
-        personal learning and portfolio project. This page explains what data it uses and why.
+        {SITE.name} helps you create, schedule and publish posts to your social accounts: {PLATFORM_LIST}. It&apos;s
+        a personal learning and portfolio project. This page explains what data it uses and why.
       </p>
 
       <h2>What we collect</h2>
       <ul>
         <li>Your account details: your name, email address, and time zone.</li>
         <li>
-          Connected accounts: when you connect Instagram, Facebook or YouTube, we store the account&apos;s name,
-          ID and profile picture, plus the login tokens those services give us.
+          Connected accounts: when you connect one of these accounts, we store the account&apos;s name, username,
+          ID and profile picture, plus the login tokens (or, for Bluesky, the app password) that service gives us.
+          For Pinterest, we also read the names and IDs of your boards so you can choose where a Pin goes.
         </li>
         <li>Content you create: captions, photos and videos you upload, and when posts are scheduled.</li>
         <li>
@@ -28,7 +32,10 @@ export default function PrivacyPage() {
 
       <h2>How we use it</h2>
       <ul>
-        <li>To publish your posts to the accounts you choose, at the times you choose.</li>
+        <li>
+          To publish your posts to the accounts you choose, at the times you choose, and to delete them there when
+          you ask.
+        </li>
         <li>To show your posts&apos; results and comments, and to send replies you write.</li>
         <li>We don&apos;t sell your data, show you ads, or use it for anything else.</li>
       </ul>
@@ -39,22 +46,33 @@ export default function PrivacyPage() {
         <li>Database rules make sure each person can only see their own data.</li>
         <li>
           Data is stored with our service providers: Supabase (database and file storage), Vercel (hosting) and
-          Inngest (scheduling).
+          Inngest (scheduling). Resend sends our emails, and Anthropic receives only the text you type into
+          &quot;Write with AI&quot;, to suggest captions.
         </li>
       </ul>
 
-      <h2>Data from Google and Meta</h2>
+      <h2>Data from the platforms</h2>
       <p>
         {SITE.name}&apos;s use of information received from Google APIs follows the Google API Services User Data
-        Policy, including its Limited Use requirements. Data from YouTube and Meta (Facebook and Instagram) is used
-        only to provide the features described above. You can also remove {SITE.name}&apos;s access at any time
-        from your Google account settings or Facebook&apos;s Business Integrations settings.
+        Policy, including its Limited Use requirements. Data from every connected platform ({PLATFORM_LIST}) is
+        used only to provide the features described above, is never shared with anyone else, and is never used to
+        train AI models. We only act on your accounts when you ask, for example by publishing or scheduling a post.
       </p>
+      <p>You can remove {SITE.name}&apos;s access at any time, in Connections or in each service&apos;s own settings:</p>
+      <ul>
+        <li>Google / YouTube: your Google account&apos;s &quot;Third-party apps and services&quot;.</li>
+        <li>Facebook and Instagram: Facebook&apos;s &quot;Business Integrations&quot; settings.</li>
+        <li>Threads: Threads&apos; &quot;Website permissions&quot; settings.</li>
+        <li>Bluesky: delete the app password in Bluesky&apos;s &quot;App passwords&quot; settings.</li>
+        <li>LinkedIn: LinkedIn&apos;s &quot;Permitted services&quot; settings.</li>
+        <li>Pinterest: Pinterest&apos;s &quot;Apps&quot; settings, under Security and logins.</li>
+        <li>X: X&apos;s &quot;Connected apps&quot; settings.</li>
+      </ul>
 
       <h2>Deleting your data</h2>
       <ul>
         <li>Disconnecting an account in Connections deletes its stored login tokens right away.</li>
-        <li>Deleting a draft removes it from {SITE.name}.</li>
+        <li>Deleting a post removes it, and its results, from {SITE.name}.</li>
         <li>
           To delete your whole {SITE.name} account and everything in it, email{" "}
           <a href={`mailto:${SITE.contactEmail}`} className="text-primary hover:underline">

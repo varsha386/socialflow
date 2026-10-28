@@ -7,7 +7,14 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { mediaUrl } from "@/lib/media";
 import type { PlatformId } from "@/lib/platforms";
-import { DEFAULT_INSTAGRAM, type InstagramOptions, type MediaItem, type YouTubeOptions } from "@/lib/post-rules";
+import {
+  DEFAULT_INSTAGRAM,
+  DEFAULT_PINTEREST,
+  type InstagramOptions,
+  type MediaItem,
+  type PinterestOptions,
+  type YouTubeOptions,
+} from "@/lib/post-rules";
 import { engagementScore, rankBestTimes, type BestTimes } from "@/lib/best-time";
 import type { BioLink, BioPage } from "@/lib/bio";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -149,6 +156,7 @@ export async function getDraft(postId: string) {
   const customCaptions: Partial<Record<PlatformId, string>> = {};
   let youtube: YouTubeOptions = { title: "", privacy: "public" };
   let instagram: InstagramOptions = DEFAULT_INSTAGRAM;
+  let pinterest: PinterestOptions = DEFAULT_PINTEREST;
   for (const t of post.post_targets) {
     const platform = t.social_accounts?.platform;
     if (!platform) continue;
@@ -160,6 +168,15 @@ export async function getDraft(postId: string) {
       };
     }
     if (platform === "instagram" && t.options.format === "story") instagram = { format: "story" };
+    if (platform === "pinterest") {
+      pinterest = {
+        title: String(t.options.title ?? ""),
+        link: String(t.options.link ?? ""),
+        boards: t.options.boardId
+          ? { ...pinterest.boards, [t.social_account_id]: String(t.options.boardId) }
+          : pinterest.boards,
+      };
+    }
   }
 
   return {
@@ -171,6 +188,7 @@ export async function getDraft(postId: string) {
     customCaptions,
     youtube,
     instagram,
+    pinterest,
   };
 }
 

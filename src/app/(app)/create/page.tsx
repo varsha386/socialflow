@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { Composer, type ComposerInitial } from "@/components/composer/composer";
 import { PageHeader } from "@/components/page-header";
 import { isValidDate } from "@/lib/calendar";
-import { DEFAULT_INSTAGRAM } from "@/lib/post-rules";
+import { DEFAULT_INSTAGRAM, DEFAULT_PINTEREST } from "@/lib/post-rules";
 import {
   getBestTimeSuggestions,
   getCurrentUser,
@@ -60,6 +60,7 @@ export default async function CreatePostPage({ searchParams }: PageProps<"/creat
         customCaptions: draft.customCaptions,
         youtube: draft.youtube,
         instagram: draft.instagram,
+        pinterest: draft.pinterest,
       }
     : original
       ? {
@@ -73,6 +74,7 @@ export default async function CreatePostPage({ searchParams }: PageProps<"/creat
           customCaptions: original.customCaptions,
           youtube: original.youtube,
           instagram: original.instagram,
+          pinterest: original.pinterest,
         }
       : {
           postId: null,
@@ -83,6 +85,7 @@ export default async function CreatePostPage({ searchParams }: PageProps<"/creat
           customCaptions: {},
           youtube: { title: "", privacy: "public" },
           instagram: DEFAULT_INSTAGRAM,
+          pinterest: DEFAULT_PINTEREST,
         };
 
   return (
@@ -106,6 +109,7 @@ export default async function CreatePostPage({ searchParams }: PageProps<"/creat
         queue={queue}
         bestTimes={bestTimes}
         instagramPostsToday={instagramPostsToday}
+        pinterestSandbox={process.env.PINTEREST_SANDBOX === "1"}
       />
     </>
   );

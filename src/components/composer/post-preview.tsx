@@ -2,7 +2,14 @@
 
 import { Bookmark, Ellipsis, Globe, Heart, MessageCircle, Play, Send, Share2, ThumbsUp } from "lucide-react";
 import type { PlatformId } from "@/lib/platforms";
-import { DEFAULT_INSTAGRAM, type InstagramOptions, type MediaItem, type YouTubeOptions } from "@/lib/post-rules";
+import {
+  DEFAULT_INSTAGRAM,
+  DEFAULT_PINTEREST,
+  type InstagramOptions,
+  type MediaItem,
+  type PinterestOptions,
+  type YouTubeOptions,
+} from "@/lib/post-rules";
 
 type PreviewAccount = { name: string; username: string | null; avatarUrl: string | null };
 
@@ -14,6 +21,7 @@ export function PostPreview({
   media,
   youtube,
   instagram = DEFAULT_INSTAGRAM,
+  pinterest = DEFAULT_PINTEREST,
 }: {
   platform: PlatformId;
   account: PreviewAccount;
@@ -21,13 +29,17 @@ export function PostPreview({
   media: MediaItem[];
   youtube: YouTubeOptions;
   instagram?: InstagramOptions;
+  pinterest?: PinterestOptions;
 }) {
+  if (platform === "pinterest") return <PinterestPreview account={account} caption={caption} media={media} title={pinterest.title} />;
   if (platform === "instagram" && instagram.format === "story") return <InstagramStoryPreview account={account} media={media} />;
   if (platform === "instagram") return <InstagramPreview account={account} caption={caption} media={media} />;
   if (platform === "facebook") return <FacebookPreview account={account} caption={caption} media={media} />;
   if (platform === "bluesky") return <BlueskyPreview account={account} caption={caption} media={media} />;
   // Threads posts look much like Bluesky's: avatar, name, text, then photos.
   if (platform === "threads") return <BlueskyPreview account={account} caption={caption} media={media} />;
+  // LinkedIn posts look much like Facebook's: name, text, then a photo grid or video.
+  if (platform === "linkedin") return <FacebookPreview account={account} caption={caption} media={media} />;
   return <YouTubePreview account={account} caption={caption} media={media} youtube={youtube} />;
 }
 
@@ -139,6 +151,46 @@ function BlueskyPreview({ account, caption, media }: { account: PreviewAccount; 
           <MessageCircle className="size-4" />
           <Share2 className="size-4" />
           <Heart className="size-4" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// A Pin: the photo with rounded corners, then the title, description and account.
+function PinterestPreview({
+  account,
+  caption,
+  media,
+  title,
+}: {
+  account: PreviewAccount;
+  caption: string;
+  media: MediaItem[];
+  title: string;
+}) {
+  const photos = media.filter((m) => m.kind === "image");
+  return (
+    <div className="mx-auto w-full max-w-[280px] text-[13px] text-[#111]">
+      <div className="relative overflow-hidden rounded-2xl">
+        <MediaView item={photos[0]} className="aspect-[2/3] w-full" />
+        {photos.length > 1 && (
+          <span className="absolute top-2 right-2 rounded-full bg-black/70 px-2 py-0.5 text-xs text-white">
+            1/{photos.length}
+          </span>
+        )}
+        <span className="absolute top-2 left-2 rounded-full bg-[#e60023] px-3 py-1.5 text-xs font-semibold text-white">Save</span>
+      </div>
+      <div className="space-y-1 px-1 pt-2 dark:text-white">
+        {title.trim() && <p className="line-clamp-2 font-semibold">{title}</p>}
+        {caption ? (
+          <Caption text={caption} className="line-clamp-3 text-neutral-600 dark:text-neutral-300" />
+        ) : (
+          <p className="text-neutral-400">Your description will appear here</p>
+        )}
+        <div className="flex items-center gap-2 pt-1">
+          <Avatar account={account} size={24} />
+          <span className="truncate font-medium">{account.name}</span>
         </div>
       </div>
     </div>
