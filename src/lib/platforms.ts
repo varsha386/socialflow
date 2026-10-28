@@ -4,8 +4,8 @@
 // both connect through one Meta login.
 // `connectWith` is how people connect it: a login window ("oauth"), or a form
 // on the Connections page asking for an app password ("app-password").
-export type PlatformId = "instagram" | "facebook" | "youtube" | "bluesky" | "threads";
-export type ProviderId = "meta" | "youtube" | "bluesky" | "threads";
+export type PlatformId = "instagram" | "facebook" | "youtube" | "bluesky" | "threads" | "linkedin" | "pinterest";
+export type ProviderId = "meta" | "youtube" | "bluesky" | "threads" | "linkedin" | "pinterest";
 
 export type Platform = {
   id: PlatformId;
@@ -55,6 +55,24 @@ export const PLATFORMS: Platform[] = [
     connectWith: "oauth",
   },
   {
+    id: "linkedin",
+    name: "LinkedIn",
+    short: "in",
+    color: "#0A66C2",
+    description: "Text, photos or a video on your personal LinkedIn profile.",
+    provider: "linkedin",
+    connectWith: "oauth",
+  },
+  {
+    id: "pinterest",
+    name: "Pinterest",
+    short: "P",
+    color: "#E60023",
+    description: "Photo Pins, or carousels of 2–5, on a board you choose.",
+    provider: "pinterest",
+    connectWith: "oauth",
+  },
+  {
     id: "bluesky",
     name: "Bluesky",
     short: "BS",
@@ -66,4 +84,4 @@ export const PLATFORMS: Platform[] = [
 ];
 
 // Shown greyed out on the Connections page, so people know what's on the way.
-export const COMING_SOON = ["LinkedIn", "TikTok", "Pinterest", "Reddit"];
+export const COMING_SOON = ["X (Twitter)"];

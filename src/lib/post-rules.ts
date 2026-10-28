@@ -21,6 +21,14 @@ export type YouTubeOptions = { title: string; privacy: "public" | "unlisted" | "
 // or video, shown for 24 hours, no caption).
 export type InstagramOptions = { format: "feed" | "story" };
 export const DEFAULT_INSTAGRAM: InstagramOptions = { format: "feed" };
+
+// Pinterest: every Pin goes on a board (each account has its own boards), with an optional
+// title and a link people can click through to. The caption becomes the Pin's description.
+export type PinterestOptions = { title: string; link: string; boards: Record<string, string> }; // account ID -> board ID
+export const DEFAULT_PINTEREST: PinterestOptions = { title: "", link: "", boards: {} };
+export type PinterestPin = { boardId: string; title: string; link: string }; // what one account's Pin uses
+export const PINTEREST_TITLE_LIMIT = 100;
+export const PINTEREST_MAX_IMAGES = 5; // a carousel has 2–5
 export const INSTAGRAM_STORY_MAX_SECONDS = 60;
 
 export const CAPTION_LIMITS: Record<PlatformId, number> = {
@@ -29,7 +37,11 @@ export const CAPTION_LIMITS: Record<PlatformId, number> = {
   youtube: 5000, // the video description
   bluesky: 300, // counted in "graphemes": an emoji or accented letter counts once
   threads: 500,
+  linkedin: 3000,
+  pinterest: 800, // the Pin's description
 };
+
+export const LINKEDIN_MAX_IMAGES = 20; // a multi-image post
 
 export const THREADS_MAX_MEDIA = 20; // carousel items
 export const THREADS_POSTS_PER_DAY = 250; // per account, in a rolling 24 hours (Meta's limit)
@@ -56,7 +68,8 @@ export function checkPost(
   caption: string,
   media: MediaItem[],
   youtube: YouTubeOptions,
-  instagram: InstagramOptions = DEFAULT_INSTAGRAM
+  instagram: InstagramOptions = DEFAULT_INSTAGRAM,
+  pinterest: PinterestOptions = DEFAULT_PINTEREST
 ): string[] {
   const problems: string[] = [];
   const videos = media.filter((m) => m.kind === "video");
@@ -73,6 +86,29 @@ export function checkPost(
     if (!caption.trim() && media.length === 0) problems.push("Write something or add a photo or video.");
     if (media.length > THREADS_MAX_MEDIA) problems.push(`Use ${THREADS_MAX_MEDIA} files or fewer.`);
     if (media.some((m) => m.mimeType === "image/gif")) problems.push("GIFs aren't supported.");
+  }
+
+  if (platform === "linkedin") {
+    if (!caption.trim() && media.length === 0) problems.push("Write something or add a photo or video.");
+    if (videos.length > 0 && media.length > 1) problems.push("A video post can only have that one video.");
+    if (videos.some((v) => v.mimeType !== "video/mp4")) problems.push("LinkedIn videos must be MP4 (not MOV).");
+    if (videos.some((v) => v.durationSeconds !== null && v.durationSeconds < 3)) {
+      problems.push("LinkedIn videos must be at least 3 seconds long.");
+    }
+    if (media.length > LINKEDIN_MAX_IMAGES) problems.push(`Use ${LINKEDIN_MAX_IMAGES} photos or fewer.`);
+  }
+
+  // Choosing a board is checked per account, where the boards are known (Create and publishing).
+  if (platform === "pinterest") {
+    if (media.length === 0) problems.push("Add a photo: every Pin needs one.");
+    if (videos.length > 0) problems.push("Pinterest videos aren't supported in SocialFlow yet. Use photos.");
+    if (media.length > PINTEREST_MAX_IMAGES) problems.push(`Use ${PINTEREST_MAX_IMAGES} photos or fewer.`);
+    if (pinterest.title.length > PINTEREST_TITLE_LIMIT) {
+      problems.push(`Title is ${pinterest.title.length - PINTEREST_TITLE_LIMIT} characters too long.`);
+    }
+    if (pinterest.link.trim() && !/^https?:\/\/\S+$/i.test(pinterest.link.trim())) {
+      problems.push("The link must start with http:// or https://.");
+    }
   }
 
   if (platform === "bluesky") {

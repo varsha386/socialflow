@@ -1,5 +1,7 @@
 import "server-only";
 import { blueskyLogin } from "@/lib/connectors/bluesky";
+import { linkedinError, linkedinFetch } from "@/lib/connectors/linkedin";
+import { pinterestApi } from "@/lib/connectors/pinterest";
 import { threadsApi } from "@/lib/connectors/threads";
 import { PLATFORMS, type PlatformId } from "@/lib/platforms";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -9,7 +11,8 @@ import { PublishError } from "./types";
 
 // Deletes posts: from SocialFlow, and optionally from the platforms they went out to.
 // Docs: Facebook/Instagram (Graph API DELETE /{id}; Instagram needs instagram_manage_contents),
-// YouTube videos.delete, Bluesky deletePost, Threads DELETE /{id} (needs threads_delete).
+// YouTube videos.delete, Bluesky deletePost, Threads DELETE /{id} (needs threads_delete),
+// LinkedIn DELETE /rest/posts/{urn}, Pinterest DELETE /v5/pins/{id}.
 
 export type PlatformDeleteResult = { account: string; platform: PlatformId; ok: boolean; message?: string };
 export type DeleteOutcome = { removed: boolean; results: PlatformDeleteResult[] };
@@ -30,6 +33,20 @@ async function deleteOnPlatform(platform: PlatformId, externalId: string, accoun
     case "threads":
       await threadsApi("DELETE", `/${externalId}`, {}, token);
       return;
+    case "pinterest":
+      try {
+        await pinterestApi("DELETE", `/pins/${encodeURIComponent(externalId)}`, token);
+      } catch (err) {
+        // Already deleted on Pinterest counts as done.
+        if (!(err instanceof PublishError && /couldn't find/.test(err.message))) throw err;
+      }
+      return;
+    case "linkedin": {
+      // Deleting is idempotent on LinkedIn: an already-deleted post also succeeds.
+      const res = await linkedinFetch("DELETE", `/posts/${encodeURIComponent(externalId)}`, token);
+      if (!res.ok && res.status !== 404) throw await linkedinError(res);
+      return;
+    }
     case "youtube": {
       const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?id=${encodeURIComponent(externalId)}`, {
         method: "DELETE",

@@ -25,8 +25,10 @@ import {
   checkPost,
   type InstagramOptions,
   type MediaItem,
+  type PinterestOptions,
   type YouTubeOptions,
 } from "@/lib/post-rules";
+import { PinterestOptionsPanel } from "@/components/composer/pinterest-options";
 import { timeZoneLabel, utcToZonedInput } from "@/lib/timezone";
 import type { SocialAccount } from "@/lib/types";
 
@@ -38,6 +40,7 @@ export type ComposerInitial = {
   customCaptions: Partial<Record<PlatformId, string>>;
   youtube: YouTubeOptions;
   instagram: InstagramOptions;
+  pinterest: PinterestOptions;
 };
 
 // The posting queue, for the "Add to queue" button. `next` is the next free
@@ -65,8 +68,10 @@ export function Composer({
   queue,
   bestTimes,
   instagramPostsToday,
+  pinterestSandbox = false,
 }: {
   userId: string;
+  pinterestSandbox?: boolean; // Pinterest is in its testing mode: Pins are only visible to their owner
   timezone: string;
   suggestedDate?: string; // "YYYY-MM-DD" from the calendar: start with Schedule open for that day
   accounts: SocialAccount[];
@@ -82,6 +87,7 @@ export function Composer({
   const [customCaptions, setCustomCaptions] = useState(initial.customCaptions);
   const [youtube, setYoutube] = useState<YouTubeOptions>(initial.youtube);
   const [instagram, setInstagram] = useState<InstagramOptions>(initial.instagram);
+  const [pinterest, setPinterest] = useState<PinterestOptions>(initial.pinterest);
   const [tab, setTab] = useState<"all" | PlatformId>("all");
   const [previewChoice, setPreviewChoice] = useState<PlatformId | null>(null);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
@@ -116,11 +122,17 @@ export function Composer({
       }
       return [];
     });
+  // Each chosen Pinterest account needs a board.
+  const pinterestAccounts = accounts.filter((a) => a.platform === "pinterest" && selected.includes(a.id));
+  const missingBoards = pinterestAccounts
+    .filter((a) => !pinterest.boards[a.id])
+    .map((a) => (pinterestAccounts.length > 1 ? `Choose a board for ${a.display_name ?? a.username}.` : "Choose a board."));
   const checks = platforms.map((p) => ({
     platform: p,
     problems: [
-      ...checkPost(p, captionFor(p), media, youtube, instagram),
+      ...checkPost(p, captionFor(p), media, youtube, instagram, pinterest),
       ...(p === "instagram" ? instagramLimitNotes.filter((n) => n.includes("has reached")) : []),
+      ...(p === "pinterest" ? missingBoards : []),
     ],
   }));
 
@@ -142,6 +154,7 @@ export function Composer({
       ),
       youtube,
       instagram,
+      pinterest,
     });
     if (result.postId && result.postId !== postId) {
       setPostId(result.postId);
@@ -244,7 +257,7 @@ export function Composer({
         <CardContent className="py-10 text-center">
           <p className="font-medium">Connect an account first</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            You need at least one Instagram, Facebook or YouTube account to post to.
+            You need at least one connected account to post to.
           </p>
           <Link href="/connections" className={buttonVariants({ className: "mt-4" })}>
             Go to Connections
@@ -474,6 +487,18 @@ export function Composer({
                 )}
               </div>
             ) : null}
+
+            {activeTab === "pinterest" || (activeTab === "all" && platforms.includes("pinterest")) ? (
+              <PinterestOptionsPanel
+                accounts={pinterestAccounts}
+                value={pinterest}
+                onChange={(update) => {
+                  setMessage(null);
+                  setPinterest(update);
+                }}
+                sandbox={pinterestSandbox}
+              />
+            ) : null}
           </CardContent>
         </Card>
 
@@ -676,6 +701,7 @@ export function Composer({
             media={media}
             youtube={youtube}
             instagram={instagram}
+            pinterest={pinterest}
           />
         ) : (
           <div className="rounded-2xl border-2 border-dashed px-6 py-16 text-center text-sm text-muted-foreground">

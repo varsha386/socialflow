@@ -6,6 +6,7 @@ import { PlatformBadge } from "@/components/platform-badge";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { getConnector } from "@/lib/connectors";
 import { getSocialAccounts } from "@/lib/data";
 import { PLATFORMS, type PlatformId, type ProviderId } from "@/lib/platforms";
 import { FREE_LIMITS } from "@/lib/plans";
@@ -19,6 +20,8 @@ const PROVIDER_NAMES: Record<ProviderId, string> = {
   youtube: "YouTube",
   bluesky: "Bluesky",
   threads: "Threads",
+  linkedin: "LinkedIn",
+  pinterest: "Pinterest",
 };
 
 // Turns the ?connected=… or ?error=… left by /api/connect (or the Bluesky form) into a message.
@@ -35,6 +38,10 @@ function resultMessage(params: Record<string, string | string[] | undefined>) {
     if (provider === "youtube") return { ok: true, text: `Your YouTube channel is connected.${limitNote}` };
     if (provider === "bluesky") return { ok: true, text: "Your Bluesky account is connected." };
     if (provider === "threads") return { ok: true, text: `Your Threads profile is connected.${limitNote}` };
+    if (provider === "pinterest") return { ok: true, text: `Your Pinterest account is connected.${limitNote}` };
+    if (provider === "linkedin") {
+      return { ok: true, text: `Your LinkedIn profile is connected. LinkedIn logins last 60 days, then you reconnect.${limitNote}` };
+    }
     return {
       ok: true,
       text: `Connected ${count} ${count === 1 ? "account" : "accounts"} from Facebook and Instagram.${limitNote}`,
@@ -74,6 +81,14 @@ export default async function ConnectionsPage({ searchParams }: PageProps<"/conn
   const add = typeof params.add === "string" ? params.add : null;
   const step = add && PLATFORMS.some((p) => p.id === add) ? (add as PlatformId) : add ? "pick" : null;
 
+  // Platforms whose keys aren't in the app's settings yet (e.g. waiting for the platform's
+  // approval) are shown as "coming soon" instead of a Connect button that would fail.
+  const notReady = PLATFORMS.filter((p) => {
+    if (p.connectWith !== "oauth") return false;
+    const connector = getConnector(p.provider);
+    return !connector || connector.requiredEnv.some((name) => !process.env[name]);
+  }).map((p) => p.id);
+
   // Accounts in the order platforms are listed, so each platform's accounts sit together.
   const order = (id: PlatformId) => PLATFORMS.findIndex((p) => p.id === id);
   const sorted = [...accounts].sort((a, b) => order(a.platform) - order(b.platform));
@@ -103,7 +118,7 @@ export default async function ConnectionsPage({ searchParams }: PageProps<"/conn
         </div>
       )}
 
-      {step && <AddAccount step={step} />}
+      {step && <AddAccount step={step} notReady={notReady} />}
 
       {sorted.length === 0 ? (
         !step && (

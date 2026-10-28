@@ -1,5 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { refreshPinterestToken } from "@/lib/connectors/pinterest";
 import { refreshThreadsToken } from "@/lib/connectors/threads";
 import { decrypt, encrypt } from "@/lib/crypto";
 import type { PlatformId } from "@/lib/platforms";
@@ -34,6 +35,27 @@ export async function getAccessToken(
       return renewed.accessToken;
     } catch (err) {
       console.error("[threads] couldn't renew the login:", err);
+    }
+  }
+
+  // Pinterest logins last 30 days and come with a refresh token (good for 60 days, and
+  // replaced on every refresh): renew when under 5 days are left, or once expired.
+  const fiveDays = 5 * 24 * 60 * 60 * 1000;
+  if (platform === "pinterest" && row.refresh_token && expiresAt !== null && expiresAt < Date.now() + fiveDays) {
+    try {
+      const renewed = await refreshPinterestToken(decrypt(row.refresh_token));
+      await admin
+        .from("social_account_tokens")
+        .update({
+          access_token: encrypt(renewed.accessToken),
+          ...(renewed.refreshToken ? { refresh_token: encrypt(renewed.refreshToken) } : {}),
+          expires_at: renewed.expiresAt.toISOString(),
+        })
+        .eq("account_id", accountId);
+      return renewed.accessToken;
+    } catch (err) {
+      console.error("[pinterest] couldn't renew the login:", err);
+      if (expiresAt <= Date.now()) throw new PublishError("Pinterest needs you to reconnect this account.", { reconnect: true });
     }
   }
 
