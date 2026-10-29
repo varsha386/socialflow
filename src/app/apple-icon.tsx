@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 // The home-screen icon for iPhones and iPads. Apple rounds the corners itself,
-// so this fills the whole square with the logo's coral and draws the waves on top.
+// so this fills the whole square with the logo's coral and draws the rings on top.
 export const size = { width: 180, height: 180 };
 export const contentType = "image/png";
 
@@ -13,24 +13,15 @@ export default function AppleIcon() {
           width: "100%",
           height: "100%",
           display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
           background: "#dc532d",
         }}
       >
-        <svg
-          width="112"
-          height="112"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="#fefbf8"
-          strokeWidth="2.2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M2 12q2.5 2 5 0t5 0 5 0 5 0" />
-          <path d="M2 19q2.5 2 5 0t5 0 5 0 5 0" />
-          <path d="M2 5q2.5 2 5 0t5 0 5 0 5 0" />
+        {/* Same drawing as src/app/icon.svg: rings spreading from a drop in the lower-left corner. */}
+        <svg width="180" height="180" viewBox="0 0 32 32" fill="none" stroke="#fefbf8" strokeWidth="3">
+          <circle cx="9" cy="23" r="7" />
+          <circle cx="9" cy="23" r="14" strokeOpacity="0.7" />
+          <circle cx="9" cy="23" r="21" strokeOpacity="0.45" />
+          <circle cx="9" cy="23" r="2.6" fill="#fefbf8" stroke="none" />
         </svg>
       </div>
     ),
