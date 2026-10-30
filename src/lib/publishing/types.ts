@@ -19,11 +19,14 @@ export type PublishResult = {
 
 // An error with a message that's safe and useful to show the user.
 // `reconnect` means the account's login has expired or been revoked.
+// `notFound` means the platform says the thing doesn't exist (for a delete: already gone).
 export class PublishError extends Error {
   reconnect: boolean;
-  constructor(message: string, opts: { reconnect?: boolean } = {}) {
+  notFound: boolean;
+  constructor(message: string, opts: { reconnect?: boolean; notFound?: boolean } = {}) {
     super(message);
     this.name = "PublishError";
     this.reconnect = opts.reconnect ?? false;
+    this.notFound = opts.notFound ?? false;
   }
 }
