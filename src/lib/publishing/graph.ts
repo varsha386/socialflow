@@ -39,7 +39,9 @@ export async function graph<T>(
         { reconnect: true }
       );
     }
-    throw new PublishError(err?.error_user_msg || err?.message || `Facebook returned error ${res.status}.`);
+    // 803, or 100 with subcode 33, = that object doesn't exist (or was already deleted).
+    const gone = err?.code === 803 || (err?.code === 100 && err.error_subcode === 33) || res.status === 404;
+    throw new PublishError(err?.error_user_msg || err?.message || `Facebook returned error ${res.status}.`, { notFound: gone });
   }
   return body;
 }

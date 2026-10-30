@@ -24,8 +24,12 @@ export async function connectBluesky(handleInput: string, appPasswordInput: stri
   const handle = normalizeHandle(handleInput);
   const appPassword = appPasswordInput.trim();
   if (!/^[a-z0-9.-]{3,253}$/.test(handle)) return { error: "Enter your Bluesky handle, like name.bsky.social." };
-  if (appPassword.length < 8 || appPassword.length > 64) {
-    return { error: "Paste the app password Bluesky created for you (it looks like xxxx-xxxx-xxxx-xxxx)." };
+  // Bluesky app passwords always look like xxxx-xxxx-xxxx-xxxx. Anything else is probably the
+  // main account password, which must never be stored: it can change or delete the account.
+  if (!/^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/i.test(appPassword)) {
+    return {
+      error: "Paste an app password (it looks like xxxx-xxxx-xxxx-xxxx), not your main Bluesky password. Create one in Bluesky under Settings > Privacy and security > App passwords.",
+    };
   }
 
   const supabase = await createClient();
