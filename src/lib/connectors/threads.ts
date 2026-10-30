@@ -15,7 +15,7 @@ const SCOPES = [
   "threads_delete", // delete posts made through Ripple (Posts > Delete)
 ];
 
-type ThreadsError = { error?: { message?: string; code?: number; error_user_msg?: string } };
+type ThreadsError = { error?: { message?: string; code?: number; error_subcode?: number; error_user_msg?: string } };
 
 // Calls the Threads API. A token problem (code 190) means the person must reconnect.
 export async function threadsApi<T>(
@@ -43,7 +43,9 @@ export async function threadsApi<T>(
         reconnect: true,
       });
     }
-    throw new PublishError(err?.error_user_msg || err?.message || `Threads returned error ${res.status}.`);
+    // 803, or 100 with subcode 33, = that post doesn't exist (or was already deleted).
+    const gone = err?.code === 803 || (err?.code === 100 && err.error_subcode === 33) || res.status === 404;
+    throw new PublishError(err?.error_user_msg || err?.message || `Threads returned error ${res.status}.`, { notFound: gone });
   }
   return body;
 }

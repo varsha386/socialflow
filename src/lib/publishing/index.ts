@@ -34,6 +34,9 @@ const PUBLISHERS: Record<PlatformId, (job: PublishJob) => Promise<PublishResult>
   pinterest: publishToPinterest,
 };
 
+// Stop waiting for the platforms at 270 seconds: the publish routes allow 300 (maxDuration).
+const PUBLISH_DEADLINE_MS = 270_000;
+
 // Posts in these states may be (re)published.
 const PUBLISHABLE: PostStatus[] = ["draft", "scheduled", "failed", "partially_published"];
 
@@ -208,8 +211,9 @@ export async function publishPost(postId: string, userId: string): Promise<Publi
     .update({ status: "publishing", error_message: null })
     .in("id", todo.map((t) => t.id));
 
-  // Send to every account at the same time.
-  await Promise.all(
+  // Send to every account at the same time, but never for longer than the deadline. Vercel kills
+  // this function at 300 seconds, and a post killed while "publishing" can't be retried or deleted.
+  const sends = Promise.all(
     todo.map(async (t) => {
       const account = t.social_accounts!;
       try {
@@ -249,6 +253,24 @@ export async function publishPost(postId: string, userId: string): Promise<Publi
       }
     })
   );
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<"timeout">((resolve) => {
+    timer = setTimeout(() => resolve("timeout"), PUBLISH_DEADLINE_MS);
+  });
+  const outcome = await Promise.race([sends.then(() => "done" as const), deadline]);
+  clearTimeout(timer);
+  if (outcome === "timeout") {
+    // Anything still sending is marked failed, so the post reaches a final state the user can retry
+    // or delete. A send that finishes after this still records itself as published.
+    await admin
+      .from("post_targets")
+      .update({
+        status: "failed",
+        error_message: "This took too long and timed out. Check the platform to see if it went out before you retry.",
+      })
+      .eq("post_id", postId)
+      .eq("status", "publishing");
+  }
 
   // Work out the post's overall status from all its targets.
   const { data: finalTargets } = await admin

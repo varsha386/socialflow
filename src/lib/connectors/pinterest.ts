@@ -40,7 +40,7 @@ export async function pinterestApi<T>(method: "GET" | "POST" | "DELETE", path: s
         reconnect: true,
       });
     }
-    if (res.status === 404) throw new PublishError("Pinterest couldn't find it. It may have been deleted.");
+    if (res.status === 404) throw new PublishError("Pinterest couldn't find it. It may have been deleted.", { notFound: true });
     if (res.status === 429) throw new PublishError("Pinterest's limit for Ripple has been reached. Try again later.");
     throw new PublishError(data.message ? `Pinterest: ${data.message}` : `Pinterest returned error ${res.status}.`);
   }
