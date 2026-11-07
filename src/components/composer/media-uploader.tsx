@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as tus from "tus-js-client";
 import { Check, ChevronLeft, ChevronRight, LoaderCircle, Play, Upload, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -68,6 +68,8 @@ async function uploadResumable(
   if (!token) throw new Error("not logged in");
 
   await new Promise<void>((resolve, reject) => {
+    // Once the upload has finished or failed, Cancel must do nothing: aborting then would delete the finished file.
+    let settled = false;
     const upload = new tus.Upload(file, {
       endpoint: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/upload/resumable`,
       retryDelays: [0, 3000, 5000, 10000, 20000],
@@ -77,10 +79,17 @@ async function uploadResumable(
       metadata: { bucketName: "media", objectName: storagePath, contentType: file.type, cacheControl: "3600" },
       chunkSize: 6 * 1024 * 1024, // Supabase requires exactly 6 MB pieces
       onProgress: (sent, total) => onProgress(total ? sent / total : 0),
-      onSuccess: () => resolve(),
-      onError: (error) => reject(error),
+      onSuccess: () => {
+        settled = true;
+        resolve();
+      },
+      onError: (error) => {
+        settled = true;
+        reject(error);
+      },
     });
     onStart(() => {
+      if (settled) return;
       upload.abort(true).catch(() => {});
       reject(new Error("cancelled"));
     });
@@ -92,13 +101,19 @@ export function MediaUploader({
   userId,
   media,
   onChange,
+  onBusyChange,
 }: {
   userId: string;
   media: MediaItem[];
   onChange: (update: (current: MediaItem[]) => MediaItem[]) => void;
+  onBusyChange?: (busy: boolean) => void; // true while any file is still uploading
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState<Uploading[]>([]);
+  const busy = uploading.some((u) => !u.error);
+  useEffect(() => {
+    onBusyChange?.(busy);
+  }, [busy, onBusyChange]);
   const [dragging, setDragging] = useState(false);
   // "Select" mode: tick files, then remove them together.
   const [selecting, setSelecting] = useState(false);
@@ -158,6 +173,8 @@ export function MediaUploader({
           }
           return fail("Upload failed. Check your connection and try again.");
         }
+        // The file is uploaded: remove the Cancel button before the database row is saved.
+        update({ cancel: undefined });
       } else {
         const { error: uploadError } = await supabase.storage
           .from("media")

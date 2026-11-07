@@ -87,6 +87,7 @@ export function Composer({
   const [postId, setPostId] = useState(initial.postId);
   const [selected, setSelected] = useState<string[]>(initial.accountIds);
   const [media, setMedia] = useState<MediaItem[]>(initial.media);
+  const [uploadsBusy, setUploadsBusy] = useState(false); // a file is still uploading
   const [caption, setCaption] = useState(initial.caption);
   const [customCaptions, setCustomCaptions] = useState(initial.customCaptions);
   const [youtube, setYoutube] = useState<YouTubeOptions>(initial.youtube);
@@ -186,6 +187,10 @@ export function Composer({
     setMessage(null);
     if (selected.length === 0) {
       setMessage({ ok: false, text: "Choose at least one account to post to." });
+      return false;
+    }
+    if (uploadsBusy) {
+      setMessage({ ok: false, text: "Wait for your uploads to finish first." });
       return false;
     }
     const firstProblem = checks.find((c) => c.problems.length > 0);
@@ -320,6 +325,7 @@ export function Composer({
             <MediaUploader
               userId={userId}
               media={media}
+              onBusyChange={setUploadsBusy}
               onChange={(update) => {
                 setMessage(null);
                 setMedia(update);

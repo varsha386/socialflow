@@ -49,6 +49,7 @@ export function BulkScheduler({
 }) {
   const [selected, setSelected] = useState<string[]>(accounts.map((a) => a.id));
   const [media, setMedia] = useState<MediaItem[]>([]);
+  const [uploadsBusy, setUploadsBusy] = useState(false); // a file is still uploading
   const [caption, setCaption] = useState("");
   const [captions, setCaptions] = useState<Record<string, string>>({}); // per-post overrides
   const [titles, setTitles] = useState<Record<string, string>>({}); // YouTube titles
@@ -102,6 +103,10 @@ export function BulkScheduler({
   async function run(mode: "schedule" | "draft") {
     setMessage(null);
     if (pending.length === 0) return;
+    if (uploadsBusy) {
+      setMessage("Wait for your uploads to finish first, or the posts will miss those files.");
+      return;
+    }
     if (mode === "schedule" && blocked.length > 0) {
       setMessage(`Fix the ${blocked.length === 1 ? "post" : `${blocked.length} posts`} marked below first.`);
       return;
@@ -187,6 +192,7 @@ export function BulkScheduler({
           <MediaUploader
             userId={userId}
             media={media}
+            onBusyChange={setUploadsBusy}
             onChange={(update) => setMedia((m) => update(m).slice(0, MAX_FILES))}
           />
           <p className="text-xs text-muted-foreground">

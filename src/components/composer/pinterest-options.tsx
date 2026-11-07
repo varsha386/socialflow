@@ -90,12 +90,16 @@ function BoardPicker({
 
   useEffect(() => {
     let cancelled = false;
-    getPinterestBoards(account.id).then((r) => {
-      if (cancelled) return;
-      setResult(r);
-      // With just one board, there's nothing to choose.
-      if (r.boards?.length === 1 && !value) onChange(r.boards[0].id);
-    });
+    getPinterestBoards(account.id)
+      .then((r) => {
+        if (cancelled) return;
+        setResult(r);
+        // With just one board, there's nothing to choose.
+        if (r.boards?.length === 1 && !value) onChange(r.boards[0].id);
+      })
+      .catch(() => {
+        if (!cancelled) setResult({ error: "Couldn't load your Pinterest boards. Try again." });
+      });
     return () => {
       cancelled = true;
     };
@@ -106,7 +110,14 @@ function BoardPicker({
   async function create() {
     setCreating(true);
     setCreateError(null);
-    const r = await createPinterestBoard(account.id, newName);
+    let r: Awaited<ReturnType<typeof createPinterestBoard>>;
+    try {
+      r = await createPinterestBoard(account.id, newName);
+    } catch {
+      setCreating(false);
+      setCreateError("Couldn't reach Ripple. Check your connection and try again.");
+      return;
+    }
     setCreating(false);
     if (r.error || !r.board) {
       setCreateError(r.error ?? "Couldn't create the board.");
