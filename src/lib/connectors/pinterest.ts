@@ -57,8 +57,20 @@ async function tokenRequest(params: Record<string, string>) {
     },
     body: new URLSearchParams(params),
   });
-  const body = (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number; message?: string };
-  if (!res.ok || !body.access_token) throw new Error(`Pinterest token request failed: ${body.message ?? res.status}`);
+  const body = (await res.json().catch(() => ({}))) as {
+    access_token?: string;
+    refresh_token?: string;
+    expires_in?: number;
+    message?: string;
+  };
+  if (!res.ok || !body.access_token) {
+    // 400 and 401 mean Pinterest refused the login (revoked, expired): the person must reconnect.
+    // Anything else (an outage, a rate limit) is temporary and must not mark the account as broken.
+    if (res.status === 400 || res.status === 401) {
+      throw new PublishError("Pinterest needs you to reconnect this account.", { reconnect: true });
+    }
+    throw new PublishError("Pinterest can't be reached right now. Try again in a few minutes.");
+  }
   return {
     accessToken: body.access_token,
     refreshToken: body.refresh_token ?? null,

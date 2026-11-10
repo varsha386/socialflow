@@ -178,7 +178,10 @@ export async function publishPost(postId: string, userId: string): Promise<Publi
     instagram: { name: "Instagram", max: INSTAGRAM_POSTS_PER_DAY },
     threads: { name: "Threads", max: THREADS_POSTS_PER_DAY },
   };
+  // An account at its limit fails on its own (below), instead of stopping the whole post: the
+  // other accounts still go out, and a scheduled post doesn't sit on "Scheduled" forever.
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const capped = new Map<string, string>(); // target ID -> why it can't go out
   for (const t of todo) {
     const limit = dailyLimits[t.social_accounts!.platform];
     if (!limit) continue;
@@ -189,9 +192,10 @@ export async function publishPost(postId: string, userId: string): Promise<Publi
       .eq("status", "published")
       .gte("published_at", since);
     if ((count ?? 0) >= limit.max) {
-      return {
-        error: `${t.social_accounts!.display_name ?? limit.name}: ${limit.name} allows ${limit.max} posts per account in 24 hours, and this account has reached it. Try again later.`,
-      };
+      capped.set(
+        t.id,
+        `${limit.name} allows ${limit.max} posts per account in 24 hours, and this account has reached it. Try again later.`
+      );
     }
   }
 
@@ -217,6 +221,8 @@ export async function publishPost(postId: string, userId: string): Promise<Publi
     todo.map(async (t) => {
       const account = t.social_accounts!;
       try {
+        const cappedReason = capped.get(t.id);
+        if (cappedReason) throw new PublishError(cappedReason);
         const accessToken = await getAccessToken(admin, account.id, account.platform);
         const result = await PUBLISHERS[account.platform]({
           platformAccountId: account.platform_account_id,
