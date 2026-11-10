@@ -55,7 +55,12 @@ export async function getAccessToken(
       return renewed.accessToken;
     } catch (err) {
       console.error("[pinterest] couldn't renew the login:", err);
-      if (expiresAt <= Date.now()) throw new PublishError("Pinterest needs you to reconnect this account.", { reconnect: true });
+      if (expiresAt <= Date.now()) {
+        // Only a refusal from Pinterest (already a reconnect error) disconnects the account; a network
+        // failure or outage just fails this post, which can be retried.
+        if (err instanceof PublishError) throw err;
+        throw new PublishError("Pinterest can't be reached right now. Try again in a few minutes.");
+      }
     }
   }
 

@@ -137,7 +137,6 @@ export function Composer({
     platform: p,
     problems: [
       ...checkPost(p, captionFor(p), media, youtube, instagram, pinterest, facebook),
-      ...(p === "instagram" ? instagramLimitNotes.filter((n) => n.includes("has reached")) : []),
       ...(p === "pinterest" ? missingBoards : []),
     ],
   }));
@@ -238,6 +237,13 @@ export function Composer({
 
   function handlePublish() {
     if (!readyToSend()) return;
+    // At Instagram's daily limit, posting now would fail. Scheduling is still fine: the limit is
+    // checked when the post actually goes out.
+    const reached = instagramLimitNotes.find((n) => n.includes("has reached"));
+    if (reached) {
+      setMessage({ ok: false, text: reached });
+      return;
+    }
     if (!window.confirm(`Publish now to ${selected.length} ${selected.length === 1 ? "account" : "accounts"}?`)) return;
 
     setPublishing(true);
@@ -559,10 +565,8 @@ export function Composer({
                 ))}
               </ul>
             )}
-            {/* "Getting close" notes (the "reached" ones already show as problems above). */}
-            {instagramLimitNotes
-              .filter((n) => !n.includes("has reached"))
-              .map((note) => (
+            {/* Daily-limit notes: "reached" blocks only Publish now; "getting close" is a heads-up. */}
+            {instagramLimitNotes.map((note) => (
                 <p key={note} className="text-xs text-muted-foreground">
                   Instagram: {note}
                 </p>

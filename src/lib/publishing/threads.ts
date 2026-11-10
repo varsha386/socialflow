@@ -13,6 +13,9 @@ export async function publishToThreads(job: PublishJob): Promise<PublishResult> 
   const { platformAccountId: userId, accessToken: token, caption, media } = job;
   const text: Record<string, string> = caption.trim() ? { text: caption } : {};
   let containerId: string;
+  // All the "is it ready yet?" waiting shares one budget, so a slow carousel can't run past the
+  // 300 second function limit (the carousel and its items would otherwise each wait up to 4 minutes).
+  const deadline = Date.now() + 240_000;
 
   if (media.length === 0) {
     containerId = await create(userId, token, { media_type: "TEXT", text: caption });
@@ -23,11 +26,11 @@ export async function publishToThreads(job: PublishJob): Promise<PublishResult> 
     for (const item of media) {
       children.push(await create(userId, token, { ...mediaParams(item), is_carousel_item: "true" }));
     }
-    await Promise.all(children.map((id) => waitUntilReady(id, token)));
+    await Promise.all(children.map((id) => waitUntilReady(id, token, deadline)));
     containerId = await create(userId, token, { media_type: "CAROUSEL", children: children.join(","), ...text });
   }
 
-  await waitUntilReady(containerId, token);
+  await waitUntilReady(containerId, token, deadline);
   const { id: mediaId } = await threadsApi<{ id: string }>(
     "POST",
     `/${userId}/threads_publish`,
@@ -57,9 +60,9 @@ async function create(userId: string, token: string, params: Record<string, stri
 }
 
 // Threads processes photos and videos before they can be published. Checks every
-// 3 seconds, for up to about 4 minutes.
-async function waitUntilReady(containerId: string, token: string) {
-  for (let attempt = 0; attempt < 80; attempt++) {
+// 3 seconds, until the shared deadline.
+async function waitUntilReady(containerId: string, token: string, deadline: number) {
+  while (Date.now() < deadline) {
     const { status, error_message } = await threadsApi<{ status?: string; error_message?: string }>(
       "GET",
       `/${containerId}`,

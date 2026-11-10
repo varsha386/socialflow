@@ -123,7 +123,12 @@ It should contain these settings (with real values). [.env.example](.env.example
 | `TOKEN_ENCRYPTION_KEY` | Encrypting social media logins. **Must match the owner's exactly**, or connected accounts stop working |
 | `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET` | Connecting YouTube |
 | `META_APP_ID`, `META_APP_SECRET` | Connecting Facebook and Instagram |
+| `THREADS_APP_ID`, `THREADS_APP_SECRET` | Connecting Threads (not the same as the Meta pair above) |
+| `LINKEDIN_CLIENT_ID`, `LINKEDIN_CLIENT_SECRET` | Connecting LinkedIn |
+| `PINTEREST_APP_ID`, `PINTEREST_APP_SECRET`, `PINTEREST_SANDBOX=1` | Connecting Pinterest (sandbox until Pinterest approves Standard access) |
 | `INNGEST_DEV=1` | Use the local scheduler instead of the live one |
+
+A platform with missing keys shows as "coming soon" on Connections instead of failing. Bluesky needs no keys.
 
 Check Git ignores it. This command should print `.gitignore:...  .env.local`:
 
@@ -182,7 +187,9 @@ The first page load can take a minute while it compiles. After that, saving a fi
 2. In **Settings**, set your **time zone**.
 3. In **Connections**, connect your own test accounts:
    - **Instagram:** must be a Business or Creator account, linked to a Facebook Page you manage.
-   - **YouTube:** your Google account needs a channel.
+   - **YouTube:** your Google account needs a channel. While the app is unverified, Google shows "Google hasn't verified this app": click **Advanced**, then **Go to Ripple**.
+   - **Threads, LinkedIn, Pinterest:** log in with your own account. Threads and Facebook only let people with a role on the Meta app connect, so the owner has to add you as a tester first.
+   - **Bluesky:** create an **app password** in Bluesky (Settings → Privacy and security → App passwords) and paste that, never your main password. Ripple refuses anything not shaped like `xxxx-xxxx-xxxx-xxxx`.
 
 Each person's posts and accounts are private to them, even though the database is shared.
 
@@ -305,7 +312,8 @@ We share one Supabase project, which is also the **live** database. So be carefu
 3. **Run a migration only after its pull request is approved**, just before merging, in the Supabase **SQL Editor**. Check the address bar shows project **`elcquybhujocfdvindsq`**, and paste the **whole** file with nothing highlighted.
 4. **Write migrations so they're safe to run twice**: `create table if not exists`, `add column if not exists`, `drop policy if exists` before `create policy`.
 5. **Every new table needs** Row Level Security, an owner policy, and the "Require two-step login" policy (copy the pattern from `20261009100000_require_two_step_login.sql`).
-6. ⛔ **Never re-run `20261007000000_initial_schema.sql`.** It deletes and recreates every table, which would **erase all posts and accounts**.
+6. **`20261023100000_bigger_uploads.sql` is the one migration not to run by default.** It raises the file-size limit to 500 MB and only works on Supabase Pro, so run it only after upgrading. The platform migrations (Threads, Pinterest) must be run **before** the code that uses them goes live.
+7. ⛔ **Never re-run `20261007000000_initial_schema.sql`.** It deletes and recreates every table, which would **erase all posts and accounts**.
 7. **Test with your own account only.** Don't edit or delete the other person's rows in the Table Editor.
 
 ### Background jobs while sharing a database
@@ -351,8 +359,8 @@ Also check:
 | `src/app/(auth)/` | Log in, sign up, password reset, two-step code |
 | `src/app/api/` | Connecting accounts, publish endpoint, Inngest endpoint |
 | `src/components/` | Reusable screen pieces (composer, calendar, sidebar, UI kit in `ui/`) |
-| `src/lib/connectors/` | Connecting Meta and YouTube accounts |
-| `src/lib/publishing/` | Publishing to each platform |
+| `src/lib/connectors/` | Connecting accounts: Meta, YouTube, Threads, LinkedIn, Pinterest and Bluesky |
+| `src/lib/publishing/` | Publishing to each platform, deleting posts, renewing logins |
 | `src/lib/analytics/`, `src/lib/inbox/` | Collecting metrics and comments |
 | `src/lib/post-rules.ts` | Each platform's limits and checks |
 | `src/inngest/` | Background jobs (scheduled posts, analytics, comments) |

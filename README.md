@@ -1,6 +1,6 @@
 # Ripple
 
-**Write once. Post everywhere.** Ripple is a full-stack web app for creating, scheduling and publishing posts to **Instagram, Facebook and YouTube** from one dashboard, with analytics and a unified comments inbox.
+**Write once. Post everywhere.** Ripple is a full-stack web app for creating, scheduling and publishing posts to **Instagram, Facebook, YouTube, Threads, Bluesky, LinkedIn and Pinterest** from one dashboard, with analytics and a unified comments inbox for Instagram, Facebook and YouTube.
 
 **Live demo:** https://socialflow-uhru.vercel.app
 
@@ -65,7 +65,7 @@ flowchart LR
 
 ## Tech stack
 
-Next.js 16 · React 19 · TypeScript · Tailwind CSS 4 · shadcn/ui · Supabase · Inngest · Vercel · Facebook Graph API · YouTube Data API v3
+Next.js 16 · React 19 · TypeScript · Tailwind CSS 4 · shadcn/ui · Supabase · Inngest · Vercel · Facebook Graph API · YouTube Data API v3 · Threads, LinkedIn and Pinterest APIs · Bluesky AT Protocol
 
 ## Project structure
 
@@ -95,7 +95,7 @@ supabase/migrations/  Database setup, run in order
 > **Working on Ripple with the team?** Follow [DEVELOPER_SETUP.md](DEVELOPER_SETUP.md) instead: it covers shared settings, branches and pull requests, and database rules.
 
 1. Install [Node.js](https://nodejs.org) (LTS).
-2. Create a [Supabase](https://supabase.com) project and run each file in `supabase/migrations/` **in order** in its SQL Editor.
+2. Create a [Supabase](https://supabase.com) project and run each file in `supabase/migrations/` **in order** in its SQL Editor, **except** `20261023100000_bigger_uploads.sql`: it raises the file-size limit to 500 MB and only works on Supabase Pro, so run it only after upgrading. Never re-run `20261007000000_initial_schema.sql` on a database with data: it recreates every table.
 3. Copy `.env.example` to `.env.local` and fill it in:
 
    | Variable | Where to get it |
@@ -105,9 +105,15 @@ supabase/migrations/  Database setup, run in order
    | `TOKEN_ENCRYPTION_KEY` | `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"` |
    | `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET` | Google Cloud OAuth client, with YouTube Data API v3 enabled |
    | `META_APP_ID`, `META_APP_SECRET` | Meta for Developers app (Pages and Instagram use cases) |
+   | `THREADS_APP_ID`, `THREADS_APP_SECRET` | The Threads use case of the Meta app (different from the two above) |
+   | `LINKEDIN_CLIENT_ID`, `LINKEDIN_CLIENT_SECRET` | LinkedIn developer app with "Share on LinkedIn" and "Sign In with LinkedIn using OpenID Connect" |
+   | `PINTEREST_APP_ID`, `PINTEREST_APP_SECRET`, `PINTEREST_SANDBOX=1` | Pinterest developer app. Keep the sandbox setting until Pinterest approves Standard access |
+   | `ANTHROPIC_API_KEY`, `RESEND_API_KEY`, `EMAIL_FROM` | Optional: "Write with AI" captions and email alerts (see `.env.example`) |
    | `INNGEST_DEV=1` | Local only. On Vercel, the Inngest integration adds its keys instead |
 
-4. Add the OAuth redirect URLs (local dev runs on **https**, which Threads and Meta require): `https://localhost:3000/api/connect/youtube/callback` (Google), `https://localhost:3000/api/connect/meta/callback` (Meta), `https://localhost:3000/api/connect/threads/callback` (Threads), plus the same paths on your live domain, and `https://localhost:3000/**` in Supabase → Authentication → URL Configuration.
+   A platform whose keys are missing shows as "coming soon" on Connections. Bluesky needs no keys: people connect it with an app password.
+
+4. Add the OAuth redirect URLs (local dev runs on **https**, which Threads and Meta require): `https://localhost:3000/api/connect/youtube/callback` (Google), `https://localhost:3000/api/connect/meta/callback` (Meta), `https://localhost:3000/api/connect/threads/callback` (Threads), `https://localhost:3000/api/connect/linkedin/callback` (LinkedIn), `https://localhost:3000/api/connect/pinterest/callback` (Pinterest), plus the same paths on your live domain, and `https://localhost:3000/**` in Supabase → Authentication → URL Configuration.
 5. Start it: on Windows, double-click `start-dev.bat` (it also starts the Inngest Dev Server). Elsewhere:
 
    ```bash
@@ -118,8 +124,11 @@ supabase/migrations/  Database setup, run in order
 
 ## Limitations
 
-- The Google and Meta apps are in development/testing mode, so only accounts added as testers can connect. YouTube keeps uploads from unverified apps private, and testing-mode logins expire after 7 days.
-- Instagram and Facebook views need an extra Meta permission, so analytics show YouTube views only.
+- YouTube keeps videos uploaded by unverified apps private until Google verifies Ripple.
+- Threads, Bluesky, LinkedIn and Pinterest don't have analytics or comments in Ripple yet, only publishing.
+- Only people with a role on the Meta app can connect Facebook, Instagram and Threads until Meta's App Review. Google shows an "unverified app" warning (limited to 100 users) until Google verifies the app, which needs a custom domain.
+- LinkedIn posts go to personal profiles only: Company Pages need LinkedIn's separately approved API.
+- Pinterest is in Trial mode: Pins are only visible to their owner until Pinterest approves Standard access.
 - Direct messages aren't included in the inbox.
 
 ## What I learned
